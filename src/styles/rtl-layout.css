@@ -1,0 +1,8 @@
+/* Physical RIGHT edge for Arabic RTL pages */
+#em-sidebar-right,
+#em-drawer-right {
+  left: auto !important;
+  right: 0 !important;
+  inset-inline-start: 0 !important;
+  inset-inline-end: auto !important;
+}
