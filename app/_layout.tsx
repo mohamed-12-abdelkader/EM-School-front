@@ -21,13 +21,18 @@ I18nManager.forceRTL(true);
 if (typeof document !== 'undefined') {
   document.documentElement.setAttribute('dir', 'rtl');
   document.documentElement.setAttribute('lang', 'ar');
+  document.documentElement.style.colorScheme = 'light';
   document.body.style.direction = 'rtl';
+  document.body.style.backgroundColor = '#F8FAFC';
+  document.body.style.color = '#0F172A';
   // Inject CSS so sidebar stays on the physical right under RTL
   const existing = document.getElementById('em-rtl-layout-css');
   if (!existing) {
     const style = document.createElement('style');
     style.id = 'em-rtl-layout-css';
     style.textContent = `
+      :root { color-scheme: light; }
+      html, body, #root { background: #F8FAFC !important; color: #0F172A; }
       #em-sidebar-right, #em-drawer-right {
         left: auto !important;
         right: 0 !important;

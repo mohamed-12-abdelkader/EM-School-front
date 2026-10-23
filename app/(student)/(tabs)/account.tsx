@@ -113,30 +113,38 @@ export default function AccountTab() {
           ))}
 
           <SectionTitle title="الشارات" icon="Sparkles" />
-          <View style={styles.badges}>
-            {badges.map((b) => (
-              <SoftCard
-                key={b.id}
-                style={!b.earned ? styles.badgeLocked : undefined}
-              >
-                <View style={styles.badgeHead}>
-                  <IconBadge
-                    name={b.icon}
-                    color={b.earned ? t.accent : t.inkMute}
-                    size={40}
-                  />
-                  <View style={{ flex: 1, gap: 4 }}>
-                    <Text style={styles.badgeTitle}>{b.title}</Text>
-                    <Text style={styles.badgeDesc}>{b.description}</Text>
+          {badges.length === 0 ? (
+            <SoftCard>
+              <Text style={styles.badgeDesc}>
+                الشارات تُفتح تلقائياً بعد أول امتحان أو واجب مصحح من المدرس
+              </Text>
+            </SoftCard>
+          ) : (
+            <View style={styles.badges}>
+              {badges.map((b) => (
+                <SoftCard
+                  key={b.id}
+                  style={!b.earned ? styles.badgeLocked : undefined}
+                >
+                  <View style={styles.badgeHead}>
+                    <IconBadge
+                      name={b.icon}
+                      color={b.earned ? t.accent : t.inkMute}
+                      size={40}
+                    />
+                    <View style={{ flex: 1, gap: 4 }}>
+                      <Text style={styles.badgeTitle}>{b.title}</Text>
+                      <Text style={styles.badgeDesc}>{b.description}</Text>
+                    </View>
+                    <Badge
+                      label={b.earned ? 'مكتسبة' : 'مقفلة'}
+                      tone={b.earned ? 'success' : 'neutral'}
+                    />
                   </View>
-                  <Badge
-                    label={b.earned ? 'مكتسبة' : 'مقفلة'}
-                    tone={b.earned ? 'success' : 'neutral'}
-                  />
-                </View>
-              </SoftCard>
-            ))}
-          </View>
+                </SoftCard>
+              ))}
+            </View>
+          )}
         </>
       )}
 

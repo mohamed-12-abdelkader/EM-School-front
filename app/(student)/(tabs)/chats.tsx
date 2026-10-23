@@ -44,8 +44,8 @@ export default function ChatsTab() {
       ) : threads.length === 0 ? (
         <EmptyState
           icon="MessagesSquare"
-          title="لا توجد محادثات"
-          description="ابدأ محادثة من صفحة المادة"
+          title="لا مدرسين مرتبطين بعد"
+          description="عند نشر دروس أو جدول لموادك ستظهر محادثات مدرسيك هنا"
         />
       ) : (
         threads.map((thread, i) => {

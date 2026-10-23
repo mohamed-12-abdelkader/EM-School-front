@@ -1,13 +1,12 @@
 import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { Avatar, Badge } from '@/components/ui';
+import { Avatar, Badge, EmptyState } from '@/components/ui';
 import {
   FadeIn,
   IconBadge,
   LoadingBlock,
   ProgressBar,
-  SectionTitle,
   SoftCard,
   StudentScreen,
   rowRtl,
@@ -17,16 +16,13 @@ import { getStudentSubjects, getTeacher } from '@/services/studentPortal';
 import type { StudentSubject } from '@/types/studentPortal';
 
 const TOOLS = [
-  { label: 'الجدول', icon: 'CalendarClock', href: '/(student)/timetable', color: t.brand },
-  { label: 'المحاضرات', icon: 'Presentation', href: '/(student)/lectures', color: '#0EA5E9' },
-  { label: 'الواجبات', icon: 'FileText', href: '/(student)/assignments', color: t.warning },
-  { label: 'الامتحانات', icon: 'ClipboardList', href: '/(student)/exams', color: t.accent },
-  { label: 'المذاكرة', icon: 'CalendarDays', href: '/(student)/planner', color: t.success },
-  { label: 'النتائج', icon: 'FileBarChart', href: '/(student)/results', color: '#6366F1' },
-  { label: 'المسابقات', icon: 'Trophy', href: '/(student)/competitions', color: t.accent },
-  { label: 'الإشعارات', icon: 'Bell', href: '/(student)/notifications', color: t.danger },
-  { label: 'المزيد', icon: 'Menu', href: '/(student)/more', color: t.inkSoft },
-];
+  { label: 'واجبات', icon: 'FileText', href: '/(student)/assignments', color: t.warning },
+  { label: 'امتحانات', icon: 'ClipboardList', href: '/(student)/exams', color: t.sky },
+  { label: 'دروس', icon: 'Presentation', href: '/(student)/lectures', color: t.brand },
+  { label: 'نتائج', icon: 'FileBarChart', href: '/(student)/results', color: t.success },
+  { label: 'جدول', icon: 'CalendarClock', href: '/(student)/timetable', color: '#6366F1' },
+  { label: 'إشعارات', icon: 'Bell', href: '/(student)/notifications', color: t.danger },
+] as const;
 
 export default function StudyTab() {
   const router = useRouter();
@@ -51,32 +47,48 @@ export default function StudyTab() {
   );
 
   return (
-    <StudentScreen title="دراستي" subtitle="المواد والأدوات" hero>
-      <SectionTitle title="أدوات سريعة" icon="Sparkles" />
+    <StudentScreen title="دراستي" subtitle="اختر مادة للمتابعة" hero>
+      <Text style={styles.blockLabel}>وصول سريع</Text>
       <View style={styles.tools}>
         {TOOLS.map((tool, i) => (
-          <FadeIn key={tool.href} delay={i * 30}>
+          <FadeIn key={tool.href} delay={i * 25}>
             <Pressable
-              style={styles.tool}
+              style={({ pressed }) => [
+                styles.tool,
+                pressed && { transform: [{ scale: 0.97 }] },
+              ]}
               onPress={() => router.push(tool.href as never)}
             >
-              <IconBadge name={tool.icon} color={tool.color} size={44} />
+              <IconBadge name={tool.icon} color={tool.color} size={40} />
               <Text style={styles.toolLabel}>{tool.label}</Text>
             </Pressable>
           </FadeIn>
         ))}
       </View>
 
-      <SectionTitle title="موادي" icon="BookOpen" />
+      <View style={styles.subjectsHead}>
+        <Text style={styles.blockLabel}>موادي هذا الترم</Text>
+        <Text style={styles.count}>{subjects.length} مواد</Text>
+      </View>
+
       {loading ? (
         <LoadingBlock />
+      ) : subjects.length === 0 ? (
+        <EmptyState
+          icon="BookOpen"
+          title="لا مواد بعد"
+          description="عند إضافة دروس أو واجبات من المدرس ستظهر هنا"
+        />
       ) : (
         subjects.map((s, i) => {
           const teacher = getTeacher(s.teacherId);
+          const teacherName = teacher?.name || s.teacherName || '';
           return (
-            <FadeIn key={s.id} delay={60 + i * 40}>
+            <FadeIn key={s.id} delay={50 + i * 40}>
               <SoftCard
-                onPress={() => router.push(`/(student)/subject/${s.id}` as never)}
+                onPress={() =>
+                  router.push(`/(student)/subject/${s.id}` as never)
+                }
                 padded={false}
               >
                 <View style={styles.subject}>
@@ -85,33 +97,41 @@ export default function StudyTab() {
                   />
                   <View style={styles.subjectBody}>
                     <View style={styles.subjectTop}>
-                      <IconBadge name={s.icon} color={s.color} size={48} />
+                      <View
+                        style={[
+                          styles.subjectIcon,
+                          { backgroundColor: `${s.color}18` },
+                        ]}
+                      >
+                        <IconBadge
+                          name={s.icon}
+                          color={s.color}
+                          bg="transparent"
+                          size={40}
+                        />
+                      </View>
                       <View style={styles.subjectInfo}>
                         <Text style={styles.subjectName}>{s.name}</Text>
-                        <View style={styles.teacherRow}>
-                          {teacher ? (
+                        {teacherName ? (
+                          <View style={styles.teacherRow}>
                             <Avatar
-                              name={teacher.name}
-                              size={22}
-                              color={teacher.avatarColor}
+                              name={teacherName}
+                              size={20}
+                              color={teacher?.avatarColor || s.color}
                             />
-                          ) : null}
-                          <Text style={styles.teacherName}>{teacher?.name}</Text>
-                        </View>
+                            <Text style={styles.teacherName}>{teacherName}</Text>
+                          </View>
+                        ) : null}
                       </View>
-                      {s.lastExamScore != null ? (
-                        <Badge
-                          label={`${s.lastExamScore}/${s.lastExamMax}`}
-                          tone="info"
-                        />
-                      ) : (
-                        <Badge label="بدون امتحان" tone="neutral" />
-                      )}
+                      <Badge
+                        label={`${s.lecturesCount + s.assignmentsCount}`}
+                        tone="neutral"
+                      />
                     </View>
-                    <ProgressBar value={s.progress} color={s.color} height={8} />
+                    <ProgressBar value={s.progress} color={s.color} height={7} />
                     <Text style={styles.meta}>
-                      {s.lecturesCount} محاضرة · {s.assignmentsCount} واجب · تقدم{' '}
-                      {s.progress}%
+                      {s.lecturesCount} دروس · {s.assignmentsCount} واجبات
+                      {s.examsCount != null ? ` · ${s.examsCount} امتحانات` : ''}
                     </Text>
                   </View>
                 </View>
@@ -125,28 +145,47 @@ export default function StudyTab() {
 }
 
 const styles = StyleSheet.create({
+  blockLabel: {
+    fontFamily: t.fonts.bold,
+    fontSize: 16,
+    color: t.ink,
+    textAlign: 'right',
+    marginBottom: 4,
+  },
+  subjectsHead: {
+    flexDirection: rowRtl,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: t.space.sm,
+  },
+  count: {
+    fontFamily: t.fonts.medium,
+    fontSize: 12,
+    color: t.inkMute,
+  },
   tools: {
     flexDirection: rowRtl,
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 8,
+    marginBottom: t.space.sm,
   },
   tool: {
-    width: '30%',
+    width: '31%',
     flexGrow: 1,
-    minWidth: 100,
+    minWidth: 96,
     backgroundColor: t.card,
     borderWidth: 1,
     borderColor: t.line,
     borderRadius: t.radius.lg,
-    paddingVertical: 14,
+    paddingVertical: 12,
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
     ...t.shadow.card,
   },
   toolLabel: {
     fontFamily: t.fonts.semiBold,
     fontSize: 12,
-    color: t.ink,
+    color: t.inkSoft,
   },
   subject: {
     flexDirection: rowRtl,
@@ -164,6 +203,9 @@ const styles = StyleSheet.create({
     flexDirection: rowRtl,
     alignItems: 'center',
     gap: 12,
+  },
+  subjectIcon: {
+    borderRadius: 14,
   },
   subjectInfo: { flex: 1, gap: 6, minWidth: 0 },
   subjectName: {

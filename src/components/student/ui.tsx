@@ -133,7 +133,9 @@ export function SoftCard({
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [pressed && { opacity: 0.92, transform: [{ scale: 0.995 }] }]}
+      style={({ pressed }) => [
+        pressed && { opacity: 0.94, transform: [{ scale: 0.985 }] },
+      ]}
     >
       {content}
     </Pressable>
@@ -336,8 +338,9 @@ export function LoadingBlock() {
 }
 
 export function formatShortDate(iso: string) {
+  if (!iso || !String(iso).trim()) return '';
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso.slice(0, 10);
+  if (Number.isNaN(d.getTime())) return '';
   return `${d.getDate()}/${d.getMonth() + 1}`;
 }
 
@@ -360,7 +363,7 @@ export const DAY_NAMES = [
 export const assignmentStatusLabel: Record<string, string> = {
   new: 'جديد',
   in_progress: 'جارٍ',
-  submitted: 'مُسلَّم (تجريبي)',
+  submitted: 'مُسلَّم',
   graded: 'مصحح',
   overdue: 'متأخر',
 };

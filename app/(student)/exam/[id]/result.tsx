@@ -1,99 +1,225 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Badge, Button, EmptyState } from '@/components/ui';
-import { LoadingBlock, StudentScreen, rowRtl } from '@/components/student/ui';
 import {
-  getExam,
-  getExamAttempts,
-} from '@/services/studentPortal';
-import type { ExamAttempt, ExamQuestion } from '@/types/studentPortal';
-import { colors, fonts, radii, spacing } from '@/theme/tokens';
+  FadeIn,
+  LoadingBlock,
+  StudentScreen,
+  rowRtl,
+} from '@/components/student/ui';
+import { studentTheme as t } from '@/components/student/theme';
+import { getExamResult } from '@/services/studentPortal';
+
+type ResultQ = {
+  id: string;
+  text: string;
+  choices: string[];
+  choiceIds: string[];
+  correctIndex: number;
+  explanation?: string;
+  isCorrect: boolean | null;
+  pointsAwarded: number;
+  points: number;
+  yourChoiceId: string | null;
+  yourWritten: string | null;
+  type: string;
+};
 
 export default function ExamResultScreen() {
-  const { id, attemptId, auto } = useLocalSearchParams<{
+  const { id, auto } = useLocalSearchParams<{
     id: string;
     attemptId?: string;
     auto?: string;
   }>();
   const router = useRouter();
-  const [attempt, setAttempt] = useState<ExamAttempt | null>(null);
-  const [questions, setQuestions] = useState<ExamQuestion[]>([]);
+  const [score, setScore] = useState({ score: 0, max: 0, percent: 0 });
+  const [title, setTitle] = useState('');
+  const [questions, setQuestions] = useState<ResultQ[]>([]);
   const [loading, setLoading] = useState(true);
+  const [missing, setMissing] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
       let alive = true;
       (async () => {
         setLoading(true);
-        const [examData, attempts] = await Promise.all([
-          getExam(String(id)),
-          getExamAttempts(),
-        ]);
-        if (!alive) return;
-        const found =
-          attempts.find((a) => a.id === attemptId) ||
-          attempts.find((a) => a.examId === id) ||
-          null;
-        setAttempt(found);
-        setQuestions(examData?.questions ?? []);
-        setLoading(false);
+        try {
+          const data = await getExamResult(String(id));
+          if (!alive) return;
+          setScore({
+            score: data.attempt.score,
+            max: data.attempt.maxScore,
+            percent: data.attempt.percent,
+          });
+          setTitle(data.exam?.title || '');
+          setQuestions(data.questions);
+          setMissing(false);
+        } catch {
+          if (alive) setMissing(true);
+        } finally {
+          if (alive) setLoading(false);
+        }
       })();
       return () => {
         alive = false;
       };
-    }, [id, attemptId]),
+    }, [id]),
   );
+
+  const wrongOnly = useMemo(
+    () => questions.filter((q) => q.isCorrect === false),
+    [questions],
+  );
+  const correctCount = questions.filter((q) => q.isCorrect === true).length;
+  const pendingCount = questions.filter((q) => q.isCorrect == null).length;
 
   if (loading) {
     return (
-      <StudentScreen title="النتيجة" onBack>
+      <StudentScreen title="النتيجة" onBack hero>
         <LoadingBlock />
       </StudentScreen>
     );
   }
 
-  if (!attempt) {
+  if (missing) {
     return (
-      <StudentScreen title="النتيجة" onBack>
-        <EmptyState icon="FileBarChart" title="لا توجد نتيجة" />
+      <StudentScreen title="النتيجة" onBack hero>
+        <EmptyState
+          icon="FileBarChart"
+          title="لا توجد نتيجة بعد"
+          description="أكمل الامتحان وسلّمه أولاً لترى درجتك والتصحيح."
+        />
+        <Button
+          label="دخول الامتحان"
+          onPress={() => router.replace(`/(student)/exam/${id}` as never)}
+        />
       </StudentScreen>
     );
   }
 
   return (
-    <StudentScreen title="نتيجة الامتحان" onBack>
+    <StudentScreen title="نتيجة الامتحان" onBack hero>
       {auto === '1' ? (
         <Badge label="انتهى الوقت — تم التسليم تلقائياً" tone="warning" />
       ) : null}
-      <View style={styles.scoreCard}>
-        <Text style={styles.scoreBig}>
-          {attempt.score}/{attempt.maxScore}
-        </Text>
-        <Text style={styles.percent}>{attempt.percent}%</Text>
-        <Text style={styles.hint}>نتيجة تجريبية محسوبة محلياً</Text>
-      </View>
 
-      <Text style={styles.section}>مراجعة الإجابات</Text>
+      <FadeIn>
+        <View style={styles.scoreCard}>
+          {title ? <Text style={styles.examTitle}>{title}</Text> : null}
+          <Text style={styles.scoreBig}>
+            {score.score}/{score.max}
+          </Text>
+          <Text style={styles.percent}>{score.percent}%</Text>
+          <View style={styles.summaryRow}>
+            <Badge label={`${correctCount} صح`} tone="success" />
+            <Badge label={`${wrongOnly.length} خطأ`} tone="danger" />
+            {pendingCount > 0 ? (
+              <Badge label={`${pendingCount} بانتظار`} tone="neutral" />
+            ) : null}
+          </View>
+          <Text style={styles.hint}>درجتك محفوظة من تصحيح المدرس/النظام</Text>
+        </View>
+      </FadeIn>
+
+      {wrongOnly.length > 0 ? (
+        <FadeIn delay={60}>
+          <Text style={styles.section}>تصحيح الأسئلة الخاطئة</Text>
+          {wrongOnly.map((q, i) => {
+            const yourIdx =
+              q.yourChoiceId != null
+                ? q.choiceIds.findIndex((cid) => cid === q.yourChoiceId)
+                : -1;
+            const yourMcq =
+              yourIdx >= 0 ? q.choices[yourIdx] : q.yourChoiceId ? '—' : 'لم تُجب';
+
+            return (
+              <View key={q.id} style={[styles.qCard, styles.qWrong]}>
+                <View style={styles.qHead}>
+                  <Text style={styles.qTitle}>
+                    {i + 1}. {q.text}
+                  </Text>
+                  <Badge label="خطأ" tone="danger" />
+                </View>
+                <Text style={styles.line}>
+                  درجتك: {q.pointsAwarded}/{q.points}
+                </Text>
+                {q.type === 'written' ? (
+                  <Text style={styles.line}>إجابتك: {q.yourWritten || '—'}</Text>
+                ) : (
+                  <>
+                    <Text style={styles.lineWrong}>إجابتك: {yourMcq}</Text>
+                    <Text style={styles.lineCorrect}>
+                      الصحيحة: {q.choices[q.correctIndex] ?? '—'}
+                    </Text>
+                  </>
+                )}
+                {q.explanation ? (
+                  <Text style={styles.explain}>{q.explanation}</Text>
+                ) : null}
+              </View>
+            );
+          })}
+        </FadeIn>
+      ) : (
+        <FadeIn delay={60}>
+          <View style={styles.allGood}>
+            <Text style={styles.allGoodText}>
+              {pendingCount > 0
+                ? 'لا أخطاء في الاختيار من متعدد — الأسئلة المقالية بانتظار المدرس'
+                : 'أحسنت — لا توجد إجابات خاطئة'}
+            </Text>
+          </View>
+        </FadeIn>
+      )}
+
+      <Text style={styles.section}>كل الأسئلة</Text>
       {questions.map((q, i) => {
-        const chosen = attempt.answers[q.id];
-        const correct = chosen === q.correctIndex;
+        const yourIdx =
+          q.yourChoiceId != null
+            ? q.choiceIds.findIndex((cid) => cid === q.yourChoiceId)
+            : -1;
+        const yourMcq =
+          yourIdx >= 0 ? q.choices[yourIdx] : q.yourChoiceId ? '—' : 'لم تُجب';
+
         return (
           <View key={q.id} style={styles.qCard}>
             <View style={styles.qHead}>
               <Text style={styles.qTitle}>
                 {i + 1}. {q.text}
               </Text>
-              <Badge label={correct ? 'صح' : 'خطأ'} tone={correct ? 'success' : 'danger'} />
+              <Badge
+                label={
+                  q.isCorrect === true
+                    ? 'صح'
+                    : q.isCorrect === false
+                      ? 'خطأ'
+                      : 'بانتظار'
+                }
+                tone={
+                  q.isCorrect === true
+                    ? 'success'
+                    : q.isCorrect === false
+                      ? 'danger'
+                      : 'neutral'
+                }
+              />
             </View>
             <Text style={styles.line}>
-              إجابتك: {chosen == null ? '—' : q.choices[chosen]}
+              درجتك: {q.pointsAwarded}/{q.points}
             </Text>
-            {!correct ? (
-              <Text style={styles.line}>
-                الصحيحة: {q.choices[q.correctIndex]}
-              </Text>
-            ) : null}
+            {q.type === 'written' ? (
+              <Text style={styles.line}>إجابتك: {q.yourWritten || '—'}</Text>
+            ) : (
+              <>
+                <Text style={styles.line}>إجابتك: {yourMcq}</Text>
+                {q.isCorrect === false ? (
+                  <Text style={styles.lineCorrect}>
+                    الصحيحة: {q.choices[q.correctIndex] ?? '—'}
+                  </Text>
+                ) : null}
+              </>
+            )}
             {q.explanation ? (
               <Text style={styles.explain}>{q.explanation}</Text>
             ) : null}
@@ -102,12 +228,8 @@ export default function ExamResultScreen() {
       })}
 
       <Button
-        label="سجل الامتحانات"
+        label="عودة للامتحانات"
         variant="outline"
-        onPress={() => router.replace('/(student)/results' as never)}
-      />
-      <Button
-        label="العودة للامتحانات"
         onPress={() => router.replace('/(student)/exams' as never)}
       />
     </StudentScreen>
@@ -116,65 +238,113 @@ export default function ExamResultScreen() {
 
 const styles = StyleSheet.create({
   scoreCard: {
+    backgroundColor: t.card,
+    borderRadius: t.radius.xl,
+    borderWidth: 1,
+    borderColor: t.line,
+    padding: t.space.xl,
     alignItems: 'center',
-    gap: 4,
-    padding: spacing.xl,
-    backgroundColor: colors.primarySoft,
-    borderRadius: radii.xl,
+    gap: 6,
+    ...t.shadow.card,
+  },
+  examTitle: {
+    fontFamily: t.fonts.semiBold,
+    fontSize: 14,
+    color: t.inkSoft,
+    textAlign: 'center',
   },
   scoreBig: {
-    fontFamily: fonts.bold,
-    fontSize: 36,
-    color: colors.primary,
+    fontFamily: t.fonts.bold,
+    fontSize: 40,
+    color: t.ink,
+    fontVariant: ['tabular-nums'],
   },
   percent: {
-    fontFamily: fonts.semiBold,
-    fontSize: 18,
-    color: colors.primaryDark,
+    fontFamily: t.fonts.semiBold,
+    fontSize: 20,
+    color: t.brand,
+    fontVariant: ['tabular-nums'],
+  },
+  summaryRow: {
+    flexDirection: rowRtl,
+    gap: 8,
+    marginTop: 6,
   },
   hint: {
-    fontFamily: fonts.regular,
+    fontFamily: t.fonts.regular,
     fontSize: 12,
-    color: colors.textMuted,
+    color: t.inkMute,
+    textAlign: 'center',
   },
   section: {
-    fontFamily: fonts.semiBold,
-    fontSize: 15,
-    color: colors.text,
+    fontFamily: t.fonts.bold,
+    fontSize: 16,
+    color: t.ink,
+    textAlign: 'right',
+    marginTop: t.space.sm,
+  },
+  allGood: {
+    backgroundColor: t.successSoft,
+    borderRadius: t.radius.lg,
+    padding: t.space.md,
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+  },
+  allGoodText: {
+    fontFamily: t.fonts.semiBold,
+    fontSize: 13,
+    color: t.success,
     textAlign: 'right',
   },
   qCard: {
-    backgroundColor: colors.surface,
+    backgroundColor: t.card,
+    borderRadius: t.radius.lg,
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radii.md,
-    padding: spacing.md,
+    borderColor: t.line,
+    padding: t.space.md,
     gap: 6,
+    ...t.shadow.card,
+  },
+  qWrong: {
+    borderColor: '#FECDD3',
+    backgroundColor: '#FFF1F2',
   },
   qHead: {
     flexDirection: rowRtl,
     justifyContent: 'space-between',
-    gap: spacing.sm,
     alignItems: 'flex-start',
+    gap: t.space.sm,
   },
   qTitle: {
     flex: 1,
-    fontFamily: fonts.semiBold,
+    fontFamily: t.fonts.semiBold,
     fontSize: 14,
-    color: colors.text,
+    color: t.ink,
     textAlign: 'right',
   },
   line: {
-    fontFamily: fonts.regular,
+    fontFamily: t.fonts.regular,
     fontSize: 13,
-    color: colors.textSecondary,
+    color: t.inkMute,
+    textAlign: 'right',
+  },
+  lineWrong: {
+    fontFamily: t.fonts.regular,
+    fontSize: 13,
+    color: t.danger,
+    textAlign: 'right',
+  },
+  lineCorrect: {
+    fontFamily: t.fonts.semiBold,
+    fontSize: 13,
+    color: t.success,
     textAlign: 'right',
   },
   explain: {
-    fontFamily: fonts.regular,
+    fontFamily: t.fonts.regular,
     fontSize: 12,
-    color: colors.textMuted,
+    color: t.inkSoft,
     textAlign: 'right',
-    lineHeight: 18,
+    marginTop: 4,
   },
 });

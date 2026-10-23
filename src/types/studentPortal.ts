@@ -27,9 +27,11 @@ export interface StudentSubject {
   icon: string;
   color: string;
   teacherId: string;
+  teacherName?: string;
   progress: number;
   lecturesCount: number;
   assignmentsCount: number;
+  examsCount?: number;
   lastExamScore?: number | null;
   lastExamMax?: number | null;
   description?: string;
@@ -39,13 +41,18 @@ export interface ScheduleSlot {
   id: string;
   day: number; // 0=Sunday ... 6=Saturday
   subjectId: string;
+  subjectName?: string;
   teacherId: string;
+  teacherName?: string;
   start: string; // HH:mm
   end: string;
   type: LectureType;
   status: LectureStatus;
   lectureId?: string;
   room?: string;
+  periodNumber?: number;
+  slotType?: 'lesson' | 'break' | 'activity' | 'reserve';
+  color?: string;
 }
 
 export interface Lecture {
@@ -65,14 +72,18 @@ export interface Lecture {
 export interface Assignment {
   id: string;
   subjectId: string;
+  subjectName?: string;
   teacherId: string;
+  teacherName?: string;
   title: string;
   dueAt: string;
   status: AssignmentStatus;
   tasksCount: number;
+  attachmentsCount?: number;
   score?: number | null;
   maxScore?: number | null;
   description?: string;
+  review?: string | null;
   startedAt?: string | null;
 }
 
@@ -80,6 +91,10 @@ export interface ExamQuestion {
   id: string;
   text: string;
   choices: string[];
+  /** Server choice ids aligned with `choices` (for submit) */
+  choiceIds?: string[];
+  type?: 'mcq' | 'written';
+  points?: number;
   correctIndex: number;
   explanation?: string;
   difficulty: 'easy' | 'medium' | 'hard';
@@ -89,13 +104,21 @@ export interface ExamQuestion {
 export interface Exam {
   id: string;
   subjectId: string;
+  subjectName?: string;
+  teacherName?: string;
   title: string;
+  description?: string;
   durationMin: number;
   questionIds: string[];
   difficulty: 'easy' | 'medium' | 'hard';
   unit?: string;
   isOfficial?: boolean;
   date?: string;
+  attempted?: boolean;
+  score?: number | null;
+  maxScore?: number | null;
+  totalPoints?: number | null;
+  status?: string;
 }
 
 export interface ExamAttempt {
@@ -201,12 +224,14 @@ export interface StudentDashboardData {
   points: number;
   subjectsCount: number;
   pendingAssignments: number;
+  pendingExams: number;
   upcomingLectures: number;
   completionRate: number;
   weekProgress: number[];
   todaySlots: ScheduleSlot[];
   upcomingLecturesList: Lecture[];
   dueAssignments: Assignment[];
+  openExams: Exam[];
   recentResults: ExamAttempt[];
   competitions: Competition[];
 }

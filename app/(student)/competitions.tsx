@@ -90,45 +90,69 @@ export default function CompetitionsScreen() {
             ))
           )}
 
-          <SectionTitle title="لوحة المتصدرين (تجريبية)" />
-          {board.map((row) => (
-            <View
-              key={row.rank}
-              style={[styles.boardRow, row.isMe && styles.boardMe]}
-            >
-              <Text style={styles.rank}>#{row.rank}</Text>
-              <Text style={styles.boardName}>
-                {row.name}
-                {row.isMe ? ' (أنت)' : ''}
-              </Text>
-              <Text style={styles.boardPts}>{row.points}</Text>
-            </View>
-          ))}
-
-          <SectionTitle title="سجل النقاط" />
-          {log.map((p) => (
-            <ListRow
-              key={p.id}
-              title={p.title}
-              meta={formatShortDate(p.at)}
-              right={<Text style={styles.plus}>+{p.points}</Text>}
+          <SectionTitle title="أداؤك" />
+          {board.length === 0 ? (
+            <EmptyState
+              icon="Trophy"
+              title="لا نقاط بعد"
+              description="النقاط تُحسب من درجات امتحاناتك وواجباتك بعد التصحيح"
             />
-          ))}
+          ) : (
+            board.map((row) => (
+              <View
+                key={row.rank}
+                style={[styles.boardRow, row.isMe && styles.boardMe]}
+              >
+                <Text style={styles.rank}>#{row.rank}</Text>
+                <Text style={styles.boardName}>
+                  {row.name}
+                  {row.isMe ? ' (أنت)' : ''}
+                </Text>
+                <Text style={styles.boardPts}>{row.points}</Text>
+              </View>
+            ))
+          )}
+
+          <SectionTitle title="سجل الدرجات" />
+          {log.length === 0 ? (
+            <EmptyState
+              icon="FileBarChart"
+              title="لا درجات مسجّلة"
+              description="بعد تسليم امتحان أو تصحيح واجب تظهر هنا"
+            />
+          ) : (
+            log.map((p) => (
+              <ListRow
+                key={p.id}
+                title={p.title}
+                meta={formatShortDate(p.at)}
+                right={<Text style={styles.plus}>{p.points}%</Text>}
+              />
+            ))
+          )}
 
           <SectionTitle title="الشارات" />
-          {badges.map((b) => (
-            <ListRow
-              key={b.id}
-              title={b.title}
-              meta={b.description}
-              right={
-                <Badge
-                  label={b.earned ? 'مكتسبة' : 'مقفلة'}
-                  tone={b.earned ? 'success' : 'neutral'}
-                />
-              }
+          {badges.length === 0 ? (
+            <EmptyState
+              icon="Sparkles"
+              title="لا شارات بعد"
+              description="أكمل امتحاناً أو احصل على درجة واجب لفتح شارة"
             />
-          ))}
+          ) : (
+            badges.map((b) => (
+              <ListRow
+                key={b.id}
+                title={b.title}
+                meta={b.description}
+                right={
+                  <Badge
+                    label={b.earned ? 'مكتسبة' : 'مقفلة'}
+                    tone={b.earned ? 'success' : 'neutral'}
+                  />
+                }
+              />
+            ))
+          )}
         </>
       )}
     </StudentScreen>

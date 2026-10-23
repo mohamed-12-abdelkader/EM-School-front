@@ -18,6 +18,8 @@ export default function DashboardLayout() {
   if (!user) return <Redirect href={"/login" as never} />;
   if (user.role === 'admin') return <Redirect href={"/(admin)" as never} />;
   if (user.role === 'student') return <Redirect href={"/(student)" as never} />;
+  if (user.role === 'teacher') return <Redirect href={"/teacher" as never} />;
+  if (user.role !== 'school_admin') return <Redirect href={"/login" as never} />;
 
   return (
     <DashboardShell>

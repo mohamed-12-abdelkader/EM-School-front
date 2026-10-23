@@ -67,7 +67,7 @@ export default function SubjectDetailScreen() {
     );
   }
 
-  if (!subject || !teacher) {
+  if (!subject) {
     return (
       <StudentScreen title="المادة" onBack>
         <EmptyState icon="BookOpen" title="المادة غير موجودة" />
@@ -76,18 +76,30 @@ export default function SubjectDetailScreen() {
   }
 
   return (
-    <StudentScreen title={subject.name} subtitle={teacher.name} onBack>
+    <StudentScreen
+      title={subject.name}
+      subtitle={teacher?.name || subject.teacherName || 'مدرسك'}
+      onBack
+    >
       <View style={styles.hero}>
-        <Avatar name={teacher.name} color={teacher.avatarColor} size={48} />
+        <Avatar
+          name={teacher?.name || subject.name}
+          color={teacher?.avatarColor || subject.color}
+          size={48}
+        />
         <View style={styles.heroText}>
-          <Text style={styles.teacher}>{teacher.name}</Text>
+          <Text style={styles.teacher}>
+            {teacher?.name || subject.teacherName || 'مدرس المادة'}
+          </Text>
           <Text style={styles.desc}>{subject.description}</Text>
         </View>
       </View>
       <ProgressBar value={subject.progress} color={subject.color} />
       <Text style={styles.progressLabel}>تقدمك {subject.progress}%</Text>
 
-      <Button label="تواصل مع المدرس" variant="outline" onPress={chatTeacher} />
+      {teacher ? (
+        <Button label="تواصل مع المدرس" variant="outline" onPress={chatTeacher} />
+      ) : null}
 
       <SectionTitle title="إعلانات المدرس" />
       {announcements.length === 0 ? (

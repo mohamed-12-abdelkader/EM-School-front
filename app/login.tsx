@@ -54,7 +54,9 @@ export default function LoginScreen() {
   if (user) {
     if (user.role === 'admin') return <Redirect href={'/(admin)' as never} />;
     if (user.role === 'student') return <Redirect href={'/(student)' as never} />;
-    return <Redirect href={'/(dashboard)' as never} />;
+    if (user.role === 'teacher') return <Redirect href={'/teacher' as never} />;
+    if (user.role === 'school_admin') return <Redirect href={'/(dashboard)' as never} />;
+    return <Redirect href={'/login' as never} />;
   }
 
   const mapLoginError = (err: unknown) => {
@@ -87,6 +89,8 @@ export default function LoginScreen() {
         router.replace('/(admin)' as never);
       } else if (logged.role === 'school_admin') {
         router.replace('/(dashboard)' as never);
+      } else if (logged.role === 'teacher') {
+        router.replace('/teacher' as never);
       } else {
         setError('هذا الحساب غير مصرح له بالدخول إلى اللوحة');
       }
@@ -137,7 +141,7 @@ export default function LoginScreen() {
             <Text style={styles.title}>تسجيل الدخول</Text>
             <Text style={styles.subtitle}>
               {mode === 'staff'
-                ? 'ادخل بحساب المسؤول أو حساب إدارة المدرسة'
+                ? 'ادخل بحساب المسؤول أو إدارة المدرسة أو المعلّم'
                 : 'ادخل بكود الطالب فقط'}
             </Text>
 
@@ -218,6 +222,14 @@ export default function LoginScreen() {
                   }}
                 >
                   <Text style={styles.hint}>مدرسة: school.alpha@example.com</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    setEmail('leo@gmail.com');
+                    setPassword('teacher123');
+                  }}
+                >
+                  <Text style={styles.hint}>معلّم: leo@gmail.com / teacher123</Text>
                 </Pressable>
               </View>
             ) : (
