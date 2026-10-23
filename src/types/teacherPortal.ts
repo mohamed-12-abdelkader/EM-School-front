@@ -84,6 +84,8 @@ export interface TeacherExam {
   created_at: string;
 }
 
+export type TaskSubmissionMode = 'questions' | 'pdf';
+
 export interface TeacherTask {
   id: number;
   classroom_id: number;
@@ -92,6 +94,7 @@ export interface TeacherTask {
   description: string | null;
   max_grade: number | string;
   due_at: string | null;
+  submission_mode?: TaskSubmissionMode;
   classroom_name?: string;
   grade_name?: string;
   subject_name?: string;
@@ -107,4 +110,8 @@ export interface TeacherTaskStudent {
   grade: number | string | null;
   review: string | null;
   graded_at: string | null;
+  submitted_at?: string | null;
+  submission_note?: string | null;
+  submission_file_url?: string | null;
+  submission_filename?: string | null;
 }

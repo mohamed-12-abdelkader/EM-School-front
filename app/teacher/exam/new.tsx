@@ -112,12 +112,13 @@ export default function NewExamScreen() {
         return showToast(`أكمل نص السؤال ${i + 1}`, 'danger');
       }
       if (q.type === 'mcq') {
-        const choices = q.choices || [];
-        if (choices.filter((c) => c.text.trim()).length < 2) {
+        const choices = (q.choices || []).filter((c) => c.text.trim());
+        if (choices.length < 2) {
           return showToast(`السؤال ${i + 1}: أضف خيارين على الأقل`, 'danger');
         }
-        if (!choices.some((c) => c.is_correct && c.text.trim())) {
-          return showToast(`السؤال ${i + 1}: حدّد الإجابة الصحيحة`, 'danger');
+        const correctCount = choices.filter((c) => c.is_correct).length;
+        if (correctCount !== 1) {
+          return showToast(`السؤال ${i + 1}: حدّد إجابة صحيحة واحدةحدة فقط`, 'danger');
         }
       }
     }

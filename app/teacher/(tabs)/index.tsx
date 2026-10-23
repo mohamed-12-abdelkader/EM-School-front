@@ -12,8 +12,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MotiView } from 'moti';
-import { Avatar, Icon } from '@/components/ui';
-import { FadeIn, LoadingBlock, rowRtl } from '@/components/teacher/ui';
+import { Avatar, Button, Icon } from '@/components/ui';
+import { EmptyBlock, FadeIn, LoadingBlock, rowRtl } from '@/components/teacher/ui';
 import { teacherTheme as t } from '@/components/teacher/theme';
 import { useAuth } from '@/auth/AuthContext';
 import { getTeacherClasses, getTeacherDashboard } from '@/api/teacherPortal';
@@ -66,10 +66,14 @@ export default function TeacherHomeTab() {
   const [data, setData] = useState<TeacherDashboardData | null>(null);
   const [classes, setClasses] = useState<TeacherClass[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async (soft?: boolean) => {
-    if (!soft) setLoading(true);
+    if (!soft) {
+      setLoading(true);
+      setLoadError(false);
+    }
     try {
       const [dash, cls] = await Promise.all([
         getTeacherDashboard(),
@@ -77,9 +81,11 @@ export default function TeacherHomeTab() {
       ]);
       setData(dash);
       setClasses(cls.classes.slice(0, 3));
+      setLoadError(false);
     } catch {
       setData(null);
       setClasses([]);
+      setLoadError(true);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -145,8 +151,17 @@ export default function TeacherHomeTab() {
             </View>
           </FadeIn>
 
-          {loading || !data ? (
+          {loading ? (
             <LoadingBlock />
+          ) : loadError || !data ? (
+            <EmptyBlock
+              icon="AlertCircle"
+              title="تعذر تحميل لوحة المعلّم"
+              subtitle="الاتصال بقاعدة البيانات بطيء أو غير متاح. يمكنك إعادة المحاولة دون تسجيل الخروج."
+              action={
+                <Button label="إعادة المحاولة" onPress={() => load()} />
+              }
+            />
           ) : (
             <>
               <FadeIn delay={60}>

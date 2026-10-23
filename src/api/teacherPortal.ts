@@ -224,6 +224,7 @@ export function createTeacherTask(body: {
   description?: string | null;
   max_grade?: number;
   due_at?: string | null;
+  submission_mode?: 'questions' | 'pdf';
   questions?: TeacherExamQuestion[];
 }) {
   return apiFetch<{ task: TeacherTask }>('/teacher/portal/tasks', {

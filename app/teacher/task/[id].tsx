@@ -120,7 +120,11 @@ export default function TaskDetailScreen() {
           <SoftCard>
             {task.description ? <Text style={styles.desc}>{task.description}</Text> : null}
             <Text style={styles.meta}>
-              الحد الأقصى {Number(task.max_grade)}
+              النمط:{' '}
+              {(task.submission_mode || 'questions') === 'pdf'
+                ? 'PDF'
+                : 'أسئلة'}{' '}
+              · الحد الأقصى {Number(task.max_grade)}
               {task.due_at
                 ? ` · التسليم ${new Date(task.due_at).toLocaleDateString('ar-EG')}`
                 : ''}
@@ -201,10 +205,26 @@ export default function TaskDetailScreen() {
                       <Text style={styles.graded}>
                         {Number(s.grade)}/{Number(task.max_grade)}
                       </Text>
+                    ) : s.submitted_at ? (
+                      <Text style={styles.pending}>مُسلَّم — بانتظار التقييم</Text>
                     ) : (
-                      <Text style={styles.pending}>لم يُقيَّم</Text>
+                      <Text style={styles.pending}>لم يُسلَّم</Text>
                     )}
                   </View>
+                  {s.submission_note ? (
+                    <Text style={styles.pending}>ملاحظة: {s.submission_note}</Text>
+                  ) : null}
+                  {s.submission_file_url ? (
+                    <View style={{ marginBottom: 10 }}>
+                      <Button
+                        label={s.submission_filename || 'فتح PDF المسلَّم'}
+                        size="sm"
+                        variant="outline"
+                        icon="Download"
+                        onPress={() => Linking.openURL(s.submission_file_url!)}
+                      />
+                    </View>
+                  ) : null}
                   <Input
                     label="الدرجة"
                     value={d.grade}

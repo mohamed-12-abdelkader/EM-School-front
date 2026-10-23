@@ -14,6 +14,18 @@ export class ApiError extends Error {
   }
 }
 
+/** True auth failures — do not treat DB/proxy 401s (or empty bodies) as logout. */
+const AUTH_FAILURE_MESSAGES = new Set([
+  'unauthorized',
+  'invalid token',
+  'user not found',
+  'session expired or replaced',
+]);
+
+function isAuthFailureMessage(message: string) {
+  return AUTH_FAILURE_MESSAGES.has(message.trim().toLowerCase());
+}
+
 async function parseError(res: Response) {
   let message = 'حدث خطأ غير متوقع';
   let details: unknown;
@@ -33,11 +45,25 @@ async function parseError(res: Response) {
   return new ApiError(message, res.status, details);
 }
 
+/** Fail fast so teacher UI does not spin for 60s+ on dead DB connections. */
+const DEFAULT_TIMEOUT_MS = 12_000;
+
 export async function apiFetch<T>(
   path: string,
-  options: RequestInit & { auth?: boolean; formData?: boolean } = {},
+  options: RequestInit & {
+    auth?: boolean;
+    formData?: boolean;
+    timeoutMs?: number;
+  } = {},
 ): Promise<T> {
-  const { auth = true, formData = false, headers, ...rest } = options;
+  const {
+    auth = true,
+    formData = false,
+    headers,
+    timeoutMs = DEFAULT_TIMEOUT_MS,
+    signal: outerSignal,
+    ...rest
+  } = options;
   const finalHeaders = new Headers(headers || {});
 
   if (!formData && !finalHeaders.has('Content-Type') && rest.body) {
@@ -49,20 +75,43 @@ export async function apiFetch<T>(
     if (token) finalHeaders.set('Authorization', `Bearer ${token}`);
   }
 
-  const res = await fetch(`${API_BASE_URL}${path}`, {
-    ...rest,
-    headers: finalHeaders,
-  });
-
-  if (res.status === 401) {
-    // Sync AuthContext + storage; do not wipe storage alone (that caused "login every open")
-    emitUnauthorized();
+  const controller = new AbortController();
+  const onOuterAbort = () => controller.abort();
+  if (outerSignal) {
+    if (outerSignal.aborted) controller.abort();
+    else outerSignal.addEventListener('abort', onOuterAbort, { once: true });
   }
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-  if (!res.ok) {
-    throw await parseError(res);
+  try {
+    const res = await fetch(`${API_BASE_URL}${path}`, {
+      ...rest,
+      headers: finalHeaders,
+      signal: controller.signal,
+    });
+
+    if (!res.ok) {
+      const err = await parseError(res);
+      // Only clear session on real auth failures — not DB timeouts mislabeled as 401,
+      // and never on 503/network-style service errors.
+      if (res.status === 401 && isAuthFailureMessage(err.message)) {
+        emitUnauthorized();
+      }
+      throw err;
+    }
+
+    if (res.status === 204) return undefined as T;
+    return (await res.json()) as T;
+  } catch (err) {
+    if (
+      (err instanceof DOMException && err.name === 'AbortError') ||
+      (err instanceof Error && err.name === 'AbortError')
+    ) {
+      throw new ApiError('انتهت مهلة الاتصال بالخادم. حاول مرة أخرى', 0);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+    outerSignal?.removeEventListener('abort', onOuterAbort);
   }
-
-  if (res.status === 204) return undefined as T;
-  return (await res.json()) as T;
 }

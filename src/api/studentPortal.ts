@@ -1,4 +1,6 @@
 import { apiFetch } from '@/api/client';
+import { API_BASE_URL } from '@/api/config';
+import { getToken } from '@/auth/storage';
 
 export function fetchStudentDashboard() {
   return apiFetch<Record<string, unknown>>('/student/portal/dashboard');
@@ -83,10 +85,38 @@ export function submitStudentTask(
     auto_scored: boolean;
     score: number | null;
     max_score: number;
+    submission_mode?: string;
   }>(`/student/portal/tasks/${id}/submit`, {
     method: 'POST',
     body: JSON.stringify(body),
   });
+}
+
+export async function submitStudentTaskPdf(
+  id: string,
+  payload: { submission_note?: string | null; file: File },
+) {
+  const token = await getToken();
+  const form = new FormData();
+  form.append('file', payload.file);
+  if (payload.submission_note) form.append('submission_note', payload.submission_note);
+
+  const res = await fetch(`${API_BASE_URL}/student/portal/tasks/${id}/submit-pdf`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    body: form,
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data?.message || 'تعذر رفع ملف PDF');
+  }
+  return (await res.json()) as {
+    message: string;
+    auto_scored: boolean;
+    score: number | null;
+    max_score: number;
+    submission_file_url?: string;
+  };
 }
 
 export function fetchStudentExams(subjectId?: string) {

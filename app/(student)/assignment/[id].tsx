@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import {
   Linking,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -19,7 +20,7 @@ import {
 } from '@/components/student/ui';
 import { studentTheme as t } from '@/components/student/theme';
 import { ApiError } from '@/api/client';
-import { getTaskDetail, submitTask } from '@/services/studentPortal';
+import { getTaskDetail, submitTask, submitTaskPdf } from '@/services/studentPortal';
 import type { TaskDetail } from '@/services/studentPortal';
 
 export default function AssignmentDetailScreen() {
@@ -32,6 +33,7 @@ export default function AssignmentDetailScreen() {
   const [note, setNote] = useState('');
   const [mcq, setMcq] = useState<Record<string, string>>({});
   const [written, setWritten] = useState<Record<string, string>>({});
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -62,9 +64,62 @@ export default function AssignmentDetailScreen() {
     }, [load]),
   );
 
+  const pickStudentPdf = () => {
+    if (Platform.OS !== 'web' || typeof document === 'undefined') {
+      showToast('ارفع ملف PDF من المتصفح', 'warning');
+      return;
+    }
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/pdf,.pdf';
+    input.onchange = () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      if (file.type !== 'application/pdf' && !/\.pdf$/i.test(file.name)) {
+        showToast('اختر ملف PDF فقط', 'danger');
+        return;
+      }
+      setPdfFile(file);
+      showToast('تم اختيار ملف الإجابة', 'success');
+    };
+    input.click();
+  };
+
   const onSubmit = async () => {
     if (!detail) return;
+    const mode = detail.task.submissionMode || 'questions';
     const { questions } = detail;
+
+    if (mode === 'pdf') {
+      if (!pdfFile) {
+        showToast('ارفع ملف PDF بإجابتك قبل التسليم', 'warning');
+        return;
+      }
+      setBusy(true);
+      try {
+        await submitTaskPdf(String(id), {
+          submission_note: note.trim() || null,
+          file: pdfFile,
+        });
+        showToast('تم تسليم ملف PDF — بانتظار تقييم المدرس', 'success');
+        setPdfFile(null);
+        await load();
+      } catch (err) {
+        const msg =
+          err instanceof Error
+            ? err.message === 'Task already submitted'
+              ? 'تم تسليم هذا الواجب مسبقاً'
+              : err.message === 'Task deadline has passed'
+                ? 'انتهى موعد التسليم'
+                : err.message
+            : 'تعذر تسليم الواجب';
+        showToast(msg, 'danger');
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
+
     if (questions.length > 0) {
       const unanswered = questions.filter((q) =>
         q.type === 'mcq' ? !mcq[q.id] : !written[q.id]?.trim(),
@@ -99,9 +154,11 @@ export default function AssignmentDetailScreen() {
         err instanceof ApiError
           ? err.message === 'Task already submitted'
             ? 'تم تسليم هذا الواجب مسبقاً'
-            : err.message === 'Something went wrong'
-              ? 'تعذر التسليم — حاول مرة أخرى'
-              : err.message
+            : err.message === 'Task deadline has passed'
+              ? 'انتهى موعد التسليم'
+              : err.message === 'Something went wrong'
+                ? 'تعذر التسليم — حاول مرة أخرى'
+                : err.message
           : err instanceof Error
             ? err.message
             : 'تعذر تسليم الواجب';
@@ -221,7 +278,33 @@ export default function AssignmentDetailScreen() {
         </FadeIn>
       ) : null}
 
-      {questions.length > 0 ? (
+      {task.submissionMode === 'pdf' ? (
+        <FadeIn delay={80}>
+          <View style={styles.hintBox}>
+            <Icon name="FileText" size={18} color={t.sky} />
+            <Text style={styles.hintText}>
+              حمّل ورقة الواجب أعلاه، أنجزها، ثم ارفع إجابتك كملف PDF.
+            </Text>
+          </View>
+          {locked && task.submissionFileUrl ? (
+            <Pressable
+              style={styles.attach}
+              onPress={() => Linking.openURL(task.submissionFileUrl!)}
+            >
+              <View style={[styles.attachIcon, { backgroundColor: t.brandSoft }]}>
+                <Icon name="Upload" size={18} color={t.brand} />
+              </View>
+              <View style={styles.attachText}>
+                <Text style={styles.attachTitle}>ملفك المسلَّم</Text>
+                <Text style={styles.attachHint}>
+                  {task.submissionFilename || 'فتح PDF'}
+                </Text>
+              </View>
+              <Icon name="ChevronLeft" size={18} color={t.inkMute} />
+            </Pressable>
+          ) : null}
+        </FadeIn>
+      ) : questions.length > 0 ? (
         <FadeIn delay={80}>
           <Text style={styles.section}>الأسئلة ({questions.length})</Text>
           {questions.map((q, i) => (
@@ -281,17 +364,24 @@ export default function AssignmentDetailScreen() {
         <FadeIn delay={80}>
           <View style={styles.hintBox}>
             <Icon name="Sparkles" size={18} color={t.sky} />
-            <Text style={styles.hintText}>
-              {attachments.length > 0
-                ? 'راجع المرفق ثم اضغط تسليم عند الانتهاء. يمكنك إضافة ملاحظة للمدرس.'
-                : 'لا توجد أسئلة في هذا الواجب. يمكنك التسليم بملاحظة للمدرس.'}
-            </Text>
+            <Text style={styles.hintText}>لا توجد أسئلة في هذا الواجب.</Text>
           </View>
         </FadeIn>
       )}
 
       {!locked ? (
         <FadeIn delay={100}>
+          {task.submissionMode === 'pdf' ? (
+            <>
+              <Text style={styles.section}>رفع إجابتك (PDF)</Text>
+              <Button
+                label={pdfFile ? `تم الاختيار: ${pdfFile.name}` : 'اختر ملف PDF'}
+                variant="outline"
+                icon="Upload"
+                onPress={pickStudentPdf}
+              />
+            </>
+          ) : null}
           <Text style={styles.section}>ملاحظة للمدرس (اختياري)</Text>
           <TextInput
             style={styles.written}

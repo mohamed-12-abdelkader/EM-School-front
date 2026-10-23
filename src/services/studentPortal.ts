@@ -17,6 +17,7 @@ import {
   markStudentNotificationRead,
   submitStudentExam,
   submitStudentTask,
+  submitStudentTaskPdf,
 } from '@/api/studentPortal';
 import type {
   AiMessage,
@@ -470,6 +471,9 @@ export type TaskDetail = {
     review?: string | null;
     submittedAt?: string | null;
     submissionNote?: string | null;
+    submissionMode?: 'questions' | 'pdf';
+    submissionFileUrl?: string | null;
+    submissionFilename?: string | null;
     subjectName?: string;
     teacherName?: string;
   };
@@ -508,6 +512,14 @@ export async function getTaskDetail(id: string): Promise<TaskDetail | null> {
         submittedAt: t.submittedAt != null ? String(t.submittedAt) : null,
         submissionNote:
           t.submissionNote != null ? String(t.submissionNote) : null,
+        submissionMode:
+          t.submissionMode === 'pdf' || t.submissionMode === 'questions'
+            ? t.submissionMode
+            : 'questions',
+        submissionFileUrl:
+          t.submissionFileUrl != null ? String(t.submissionFileUrl) : null,
+        submissionFilename:
+          t.submissionFilename != null ? String(t.submissionFilename) : null,
         subjectName: t.subjectName != null ? String(t.subjectName) : undefined,
         teacherName: t.teacherName != null ? String(t.teacherName) : undefined,
       },
@@ -531,6 +543,13 @@ export async function submitTask(
   },
 ) {
   return submitStudentTask(id, payload);
+}
+
+export async function submitTaskPdf(
+  id: string,
+  payload: { submission_note?: string | null; file: File },
+) {
+  return submitStudentTaskPdf(id, payload);
 }
 
 /** @deprecated Use submitTask — kept for older screens */

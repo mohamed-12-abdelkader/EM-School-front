@@ -17,7 +17,7 @@ import type { TeacherExamQuestion } from '@/types/teacherPortal';
 const GRADE_PRESETS = [10, 20, 50, 100];
 const CHOICE_LETTERS = ['أ', 'ب', 'ج', 'د', 'هـ', 'و'];
 
-type ContentMode = 'instructions' | 'pdf' | 'questions' | 'both';
+type ContentMode = 'pdf' | 'questions';
 
 function toDateInput(d: Date) {
   const y = d.getFullYear();
@@ -80,28 +80,16 @@ const CONTENT_MODES: {
   icon: string;
 }[] = [
   {
-    id: 'pdf',
-    title: 'ملف PDF',
-    sub: 'ورقة عمل أو واجب للتحميل',
-    icon: 'FileText',
-  },
-  {
     id: 'questions',
-    title: 'أسئلة',
-    sub: 'اختيار من متعدد أو مقالي',
+    title: 'أسئلة في المنصة',
+    sub: 'MCQ مع تصحيح تلقائي أو مقالي',
     icon: 'ClipboardList',
   },
   {
-    id: 'both',
-    title: 'PDF + أسئلة',
-    sub: 'ارفع ملفاً وأضف أسئلة',
-    icon: 'Layers',
-  },
-  {
-    id: 'instructions',
-    title: 'تعليمات فقط',
-    sub: 'بدون ملف أو أسئلة',
-    icon: 'Pencil',
+    id: 'pdf',
+    title: 'واجب PDF',
+    sub: 'ارفع ورقة العمل ويستلم الطلاب PDF',
+    icon: 'FileText',
   },
 ];
 
@@ -123,16 +111,16 @@ export default function NewTaskScreen() {
   const [description, setDescription] = useState('');
   const [maxGrade, setMaxGrade] = useState('100');
   const [dueAt, setDueAt] = useState(() => toDateInput(addDays(new Date(), 7)));
-  const [contentMode, setContentMode] = useState<ContentMode>('pdf');
+  const [contentMode, setContentMode] = useState<ContentMode>('questions');
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [pdfTitle, setPdfTitle] = useState('');
-  const [questions, setQuestions] = useState<TeacherExamQuestion[]>([]);
+  const [questions, setQuestions] = useState<TeacherExamQuestion[]>([emptyMcq()]);
   const [saving, setSaving] = useState(false);
 
   const ready = !!cls && title.trim().length >= 2;
   const dueLabel = formatDueLabel(dueAt);
-  const wantsPdf = contentMode === 'pdf' || contentMode === 'both';
-  const wantsQuestions = contentMode === 'questions' || contentMode === 'both';
+  const wantsPdf = contentMode === 'pdf';
+  const wantsQuestions = contentMode === 'questions';
 
   const updateQ = (index: number, patch: Partial<TeacherExamQuestion>) => {
     setQuestions((prev) => prev.map((q, i) => (i === index ? { ...q, ...patch } : q)));
@@ -180,12 +168,12 @@ export default function NewTaskScreen() {
           return showToast(`أكمل نص السؤال ${i + 1}`, 'danger');
         }
         if (q.type === 'mcq') {
-          const choices = q.choices || [];
-          if (choices.filter((c) => c.text.trim()).length < 2) {
+          const choices = (q.choices || []).filter((c) => c.text.trim());
+          if (choices.length < 2) {
             return showToast(`السؤال ${i + 1}: أضف خيارين على الأقل`, 'danger');
           }
-          if (!choices.some((c) => c.is_correct && c.text.trim())) {
-            return showToast(`السؤال ${i + 1}: حدّد الإجابة الصحيحة`, 'danger');
+          if (choices.filter((c) => c.is_correct).length !== 1) {
+            return showToast(`السؤال ${i + 1}: حدّد إجابة صحيحة واحدةحدة فقط`, 'danger');
           }
         }
       }
@@ -203,6 +191,7 @@ export default function NewTaskScreen() {
         description: description.trim() || null,
         max_grade: grade,
         due_at: due,
+        submission_mode: contentMode,
         questions: wantsQuestions
           ? questions.map((q) => ({
               ...q,
@@ -253,15 +242,7 @@ export default function NewTaskScreen() {
           <SummaryChip
             icon="FileText"
             label="المحتوى"
-            value={
-              contentMode === 'pdf'
-                ? 'PDF'
-                : contentMode === 'questions'
-                  ? 'أسئلة'
-                  : contentMode === 'both'
-                    ? 'PDF+أسئلة'
-                    : 'تعليمات'
-            }
+            value={contentMode === 'pdf' ? 'PDF' : 'أسئلة'}
             accent
           />
           <SummaryChip icon="CalendarDays" label="التسليم" value={dueLabel} flex />
@@ -319,7 +300,7 @@ export default function NewTaskScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.sectionTitle}>محتوى الواجب</Text>
-              <Text style={styles.sectionHint}>هنا ترفع PDF أو تبني الأسئلة</Text>
+              <Text style={styles.sectionHint}>اختر أسئلة في المنصة أو واجب PDF</Text>
             </View>
           </View>
 
@@ -331,10 +312,7 @@ export default function NewTaskScreen() {
                   key={m.id}
                   onPress={() => {
                     setContentMode(m.id);
-                    if (
-                      (m.id === 'questions' || m.id === 'both') &&
-                      questions.length === 0
-                    ) {
+                    if (m.id === 'questions' && questions.length === 0) {
                       setQuestions([emptyMcq()]);
                     }
                   }}
@@ -652,8 +630,12 @@ export default function NewTaskScreen() {
       </View>
       <Text style={ready ? styles.footerHintOk : styles.footerHint}>
         {ready
-          ? `جاهز — ${wantsPdf ? (pdfFile ? 'PDF ✓' : 'PDF ناقص') : 'بدون PDF'} · ${
-              wantsQuestions ? `${questions.length} سؤال` : 'بدون أسئلة'
+          ? `جاهز — ${
+              wantsPdf
+                ? pdfFile
+                  ? 'PDF ✓'
+                  : 'ارفع PDF'
+                : `${questions.length} سؤال`
             }`
           : 'أكمل الصف والعنوان لتفعيل الحفظ'}
       </Text>
