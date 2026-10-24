@@ -1,7 +1,12 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ListRow, SectionTitle, StudentScreen } from '@/components/student/ui';
-import { colors, fonts, spacing } from '@/theme/tokens';
+import { Icon } from '@/components/ui';
+import {
+  FadeIn,
+  StudentPageShell,
+  rowRtl,
+} from '@/components/student/ui';
+import { studentTheme as t } from '@/components/student/theme';
 
 const LINKS = [
   { label: 'الجدول الدراسي', href: '/(student)/timetable', icon: 'CalendarClock' },
@@ -25,7 +30,7 @@ const FAQ = [
   },
   {
     q: 'هل المحادثات ومساعد AI جاهزان؟',
-    a: 'قائمة المدرسين حقيقية من موادك؛ إرسال الرسائل محلي مؤقتاً. مساعد AI غير مفعّل بعد.',
+    a: 'المحادثات مع المدرس حقيقية وتظهر في لوحة المدرس. مساعد AI غير مفعّل بعد.',
   },
 ];
 
@@ -33,44 +38,98 @@ export default function MoreScreen() {
   const router = useRouter();
 
   return (
-    <StudentScreen title="المزيد" subtitle="أدوات ومساعدة" onBack hero>
-      <SectionTitle title="الأقسام" />
-      {LINKS.map((l) => (
-        <ListRow
-          key={l.href}
-          title={l.label}
-          onPress={() => router.push(l.href as never)}
-        />
-      ))}
+    <StudentPageShell
+      title="المزيد"
+      subtitle="أدوات ومساعدة"
+      icon="Menu"
+    >
+      <Text style={styles.sectionTitle}>الأقسام</Text>
+      <View style={styles.grid}>
+        {LINKS.map((l, i) => (
+          <FadeIn key={l.href} delay={i * 30}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.link,
+                pressed && { opacity: 0.92 },
+              ]}
+              onPress={() => router.push(l.href as never)}
+            >
+              <View style={styles.linkIcon}>
+                <Icon name={l.icon} size={20} color={t.brand} />
+              </View>
+              <Text style={styles.linkLabel}>{l.label}</Text>
+              <Icon name="ChevronLeft" size={16} color={t.inkMute} />
+            </Pressable>
+          </FadeIn>
+        ))}
+      </View>
 
-      <SectionTitle title="الأسئلة الشائعة" />
-      {FAQ.map((f) => (
-        <View key={f.q} style={styles.faq}>
-          <Text style={styles.q}>{f.q}</Text>
-          <Text style={styles.a}>{f.a}</Text>
-        </View>
-      ))}
-    </StudentScreen>
+      <Text style={styles.sectionTitle}>الأسئلة الشائعة</Text>
+      <View style={styles.faqList}>
+        {FAQ.map((f) => (
+          <View key={f.q} style={styles.faq}>
+            <Text style={styles.q}>{f.q}</Text>
+            <Text style={styles.a}>{f.a}</Text>
+          </View>
+        ))}
+      </View>
+    </StudentPageShell>
   );
 }
 
 const styles = StyleSheet.create({
+  sectionTitle: {
+    fontFamily: t.fonts.bold,
+    fontSize: 15,
+    color: t.ink,
+    textAlign: 'right',
+  },
+  grid: { gap: 8 },
+  link: {
+    flexDirection: rowRtl,
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: t.card,
+    borderRadius: t.radius.lg,
+    borderWidth: 1,
+    borderColor: t.line,
+    padding: t.space.md,
+    ...t.shadow.card,
+  },
+  linkIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: t.brandSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  linkLabel: {
+    flex: 1,
+    fontFamily: t.fonts.semiBold,
+    fontSize: 14,
+    color: t.ink,
+    textAlign: 'right',
+  },
+  faqList: { gap: 10 },
   faq: {
-    gap: 4,
-    paddingVertical: spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
+    gap: 6,
+    backgroundColor: t.card,
+    borderRadius: t.radius.lg,
+    borderWidth: 1,
+    borderColor: t.line,
+    padding: t.space.md,
   },
   q: {
-    fontFamily: fonts.semiBold,
+    fontFamily: t.fonts.semiBold,
     fontSize: 14,
-    color: colors.text,
+    color: t.ink,
     textAlign: 'right',
   },
   a: {
-    fontFamily: fonts.regular,
+    fontFamily: t.fonts.regular,
     fontSize: 13,
-    color: colors.textSecondary,
+    color: t.inkSoft,
     textAlign: 'right',
     lineHeight: 20,
   },

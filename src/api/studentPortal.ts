@@ -141,6 +141,22 @@ export function fetchStudentExam(id: string) {
   }>(`/student/portal/exams/${id}`);
 }
 
+export function startStudentExam(id: string) {
+  return apiFetch<{
+    attempt: {
+      id: string;
+      startedAt: string;
+      endsAt: string;
+      remainingSeconds: number;
+      serverNow: string;
+      timedOut?: boolean;
+    };
+  }>(`/student/portal/exams/${id}/start`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
+
 export function submitStudentExam(
   id: string,
   answers: Array<{
@@ -148,6 +164,7 @@ export function submitStudentExam(
     choice_id?: number | null;
     written_answer?: string | null;
   }>,
+  opts?: { timed_out?: boolean },
 ) {
   return apiFetch<{
     attempt: {
@@ -157,10 +174,14 @@ export function submitStudentExam(
       maxScore: number;
       percent: number;
       finishedAt: string;
+      timedOut?: boolean;
     };
   }>(`/student/portal/exams/${id}/submit`, {
     method: 'POST',
-    body: JSON.stringify({ answers }),
+    body: JSON.stringify({
+      answers,
+      ...(opts?.timed_out ? { timed_out: true } : {}),
+    }),
   });
 }
 
@@ -269,5 +290,65 @@ export function markStudentNotificationRead(id: string) {
 export function markAllStudentNotificationsRead() {
   return apiFetch<{ message: string }>('/student/portal/notifications/read-all', {
     method: 'POST',
+  });
+}
+
+export function fetchStudentChats() {
+  return apiFetch<{
+    threads: Array<{
+      id: string;
+      teacherId: string;
+      teacherName?: string | null;
+      studentId: string;
+      lastMessage: string;
+      lastAt: string;
+      unread: number;
+    }>;
+  }>('/student/portal/chats');
+}
+
+export function ensureStudentChatWithTeacher(teacherId: number | string) {
+  return apiFetch<{
+    thread: {
+      id: string;
+      teacherId: string;
+      teacherName?: string | null;
+      studentId: string;
+      lastMessage: string;
+      lastAt: string;
+      unread: number;
+    };
+  }>('/student/portal/chats', {
+    method: 'POST',
+    body: JSON.stringify({ teacher_id: Number(teacherId) }),
+  });
+}
+
+export function fetchStudentChatMessages(threadId: string) {
+  return apiFetch<{
+    messages: Array<{
+      id: string;
+      threadId: string;
+      from: 'student' | 'teacher';
+      text: string;
+      at: string;
+      read: boolean;
+    }>;
+  }>(`/student/portal/chats/${threadId}/messages`);
+}
+
+export function sendStudentChatMessage(threadId: string, text: string) {
+  return apiFetch<{
+    message: {
+      id: string;
+      threadId: string;
+      from: 'student' | 'teacher';
+      text: string;
+      at: string;
+      read: boolean;
+    };
+  }>(`/student/portal/chats/${threadId}/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ text }),
   });
 }

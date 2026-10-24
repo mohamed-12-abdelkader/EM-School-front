@@ -7,7 +7,7 @@ import { rowRtl } from './ui';
 import { studentTheme as t } from './theme';
 
 const TAB_META: Record<string, { label: string; icon: string }> = {
-  index: { label: 'الرئيسية', icon: 'LayoutDashboard' },
+  index: { label: 'الرئيسية', icon: 'Home' },
   study: { label: 'دراستي', icon: 'BookOpen' },
   chats: { label: 'المحادثات', icon: 'MessagesSquare' },
   ai: { label: 'مساعد AI', icon: 'Bot' },
@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingHorizontal: 4,
     overflow: 'hidden',
-    ...t.shadow.float,
+    ...t.shadow.card,
   },
   tab: {
     flex: 1,

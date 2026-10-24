@@ -39,6 +39,12 @@ export interface StudentLoginResponse {
   token: string;
 }
 
+export interface ParentLoginResponse {
+  user: AuthUser;
+  school: StudentLoginSchool;
+  token: string;
+}
+
 export interface School {
   id: number;
   name: string;

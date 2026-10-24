@@ -1,5 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
+  ensureStudentChatWithTeacher,
+  fetchStudentChatMessages,
+  fetchStudentChats,
   fetchStudentDashboard,
   fetchStudentExam,
   fetchStudentExamResult,
@@ -15,6 +18,8 @@ import {
   fetchSubjectDetail,
   markAllStudentNotificationsRead,
   markStudentNotificationRead,
+  sendStudentChatMessage,
+  startStudentExam,
   submitStudentExam,
   submitStudentTask,
   submitStudentTaskPdf,
@@ -44,9 +49,8 @@ import type {
 import { displayTitle } from '@/utils/displayTitle';
 import { loadSession } from '@/auth/storage';
 
-/** Local-only personal data (planner / optional chat drafts) — never seeded with mock content. */
+/** Local-only personal data (planner) — never seeded with mock content. */
 const PLAN_KEY = 'em_student_study_plan';
-const CHAT_KEY = 'em_student_chats';
 
 async function readJson<T>(key: string, fallback: T): Promise<T> {
   try {
@@ -163,6 +167,15 @@ function asExam(raw: Record<string, unknown>): Exam {
     isOfficial: raw.isOfficial !== false,
     date: raw.date ? String(raw.date) : undefined,
     attempted: !!raw.attempted,
+    inProgress: !!raw.inProgress,
+    attemptId: raw.attemptId != null ? String(raw.attemptId) : null,
+    startedAt: raw.startedAt ? String(raw.startedAt) : null,
+    endsAt: raw.endsAt ? String(raw.endsAt) : null,
+    remainingSeconds:
+      raw.remainingSeconds != null && Number.isFinite(Number(raw.remainingSeconds))
+        ? Math.max(0, Math.floor(Number(raw.remainingSeconds)))
+        : null,
+    serverNow: raw.serverNow ? String(raw.serverNow) : null,
     score: raw.score != null ? Number(raw.score) : null,
     maxScore: raw.maxScore != null ? Number(raw.maxScore) : null,
     totalPoints: raw.totalPoints != null ? Number(raw.totalPoints) : null,
@@ -244,6 +257,15 @@ export async function getStudentDashboard(): Promise<StudentDashboardData> {
     upcoming_tasks: Array<Record<string, unknown>>;
     exams: Array<Record<string, unknown>>;
     today_slots?: Array<Record<string, unknown>>;
+    recent_notifications?: Array<{
+      id: string;
+      kind: string;
+      title: string;
+      body: string;
+      at: string;
+      read: boolean;
+      href?: string | null;
+    }>;
   };
 
   rememberSubjects(data.subjects.map(asSubject));
@@ -309,6 +331,7 @@ export async function getStudentDashboard(): Promise<StudentDashboardData> {
     pendingAssignments: data.stats.pending_tasks,
     pendingExams: data.stats.pending_exams,
     upcomingLectures: data.recent_lessons.length,
+    unreadNotifications: data.stats.unread_notifications || 0,
     completionRate: data.stats.avg_exam_percent,
     weekProgress,
     todaySlots,
@@ -316,6 +339,15 @@ export async function getStudentDashboard(): Promise<StudentDashboardData> {
     dueAssignments,
     openExams,
     recentResults,
+    recentNotifications: (data.recent_notifications || []).map((n) => ({
+      id: String(n.id),
+      kind: (n.kind as NotificationKind) || 'announcement',
+      title: n.title,
+      body: n.body,
+      at: String(n.at),
+      read: !!n.read,
+      href: n.href || undefined,
+    })),
     competitions: [],
   };
 }
@@ -608,11 +640,16 @@ export async function saveExamAttempt(_attempt: ExamAttempt) {
   return _attempt;
 }
 
+export async function startExam(examId: string) {
+  return startStudentExam(examId);
+}
+
 export async function submitExam(
   examId: string,
   answersByQuestionIndex: Record<string, number>,
   questions: ExamQuestion[],
   writtenByQuestion?: Record<string, string>,
+  opts?: { timedOut?: boolean },
 ) {
   const payload = questions.map((q) => {
     if (q.type === 'written') {
@@ -633,7 +670,7 @@ export async function submitExam(
       written_answer: null,
     };
   });
-  return submitStudentExam(examId, payload);
+  return submitStudentExam(examId, payload, { timed_out: opts?.timedOut });
 }
 
 export function gradeExam(
@@ -705,96 +742,46 @@ export async function markAllNotificationsRead() {
   return getStudentNotifications();
 }
 
-type ChatStore = { threads: ChatThread[]; messages: ChatMessage[] };
-const emptyChat: ChatStore = { threads: [], messages: [] };
-
-/** Threads the student started from real teachers (local draft until chat API exists). */
+/** Real portal chats (synced with teacher dashboard). */
 export async function getConversations(): Promise<ChatThread[]> {
   const subjects = await getStudentSubjects();
-  const store = await readJson<ChatStore>(CHAT_KEY, emptyChat);
-  const byTeacher = new Map<string, ChatThread>();
-  for (const t of store.threads) byTeacher.set(t.teacherId, t);
+  const { threads } = await fetchStudentChats();
+  const byTeacher = new Map(threads.map((t) => [t.teacherId, t]));
 
-  const threads: ChatThread[] = [];
-  const seen = new Set<string>();
+  const merged: ChatThread[] = [...threads];
+  const seen = new Set(threads.map((t) => t.teacherId));
   for (const s of subjects) {
     if (!s.teacherId || seen.has(s.teacherId)) continue;
     seen.add(s.teacherId);
     const existing = byTeacher.get(s.teacherId);
-    threads.push(
-      existing || {
-        id: `c-${s.teacherId}`,
-        teacherId: s.teacherId,
-        lastMessage: 'لا رسائل بعد — ابدأ المحادثة',
-        lastAt: new Date().toISOString(),
-        unread: 0,
-      },
-    );
+    if (existing) continue;
+    merged.push({
+      id: `pending-${s.teacherId}`,
+      teacherId: s.teacherId,
+      teacherName: s.teacherName,
+      lastMessage: 'لا رسائل بعد — ابدأ المحادثة',
+      lastAt: new Date(0).toISOString(),
+      unread: 0,
+    });
   }
-  return threads.sort((a, b) => b.lastAt.localeCompare(a.lastAt));
+  return merged.sort((a, b) => String(b.lastAt).localeCompare(String(a.lastAt)));
 }
 
 export async function getConversationMessages(threadId: string) {
-  const data = await readJson<ChatStore>(CHAT_KEY, emptyChat);
-  return data.messages
-    .filter((m) => m.threadId === threadId)
-    .sort((a, b) => a.at.localeCompare(b.at));
+  if (threadId.startsWith('pending-')) return [] as ChatMessage[];
+  const { messages } = await fetchStudentChatMessages(threadId);
+  return messages;
 }
 
 export async function sendChatMessage(threadId: string, text: string) {
-  const data = await readJson<ChatStore>(CHAT_KEY, emptyChat);
-  const msg: ChatMessage = {
-    id: `m-${Date.now()}`,
-    threadId,
-    from: 'student',
-    text: text.trim(),
-    at: new Date().toISOString(),
-    read: true,
-  };
-  let threads = data.threads;
-  if (!threads.some((t) => t.id === threadId)) {
-    const teacherId = threadId.replace(/^c-/, '');
-    threads = [
-      {
-        id: threadId,
-        teacherId,
-        lastMessage: msg.text,
-        lastAt: msg.at,
-        unread: 0,
-      },
-      ...threads,
-    ];
-  } else {
-    threads = threads.map((t) =>
-      t.id === threadId
-        ? { ...t, lastMessage: msg.text, lastAt: msg.at, unread: 0 }
-        : t,
-    );
-  }
-  await writeJson(CHAT_KEY, {
-    threads,
-    messages: [...data.messages, msg],
-  });
-  return msg;
+  const { message } = await sendStudentChatMessage(threadId, text);
+  return message;
 }
 
 export async function ensureThreadForTeacher(
   teacherId: string,
 ): Promise<ChatThread> {
-  const data = await readJson<ChatStore>(CHAT_KEY, emptyChat);
-  const existing = data.threads.find((t) => t.teacherId === teacherId);
-  if (existing) return existing;
-  const thread: ChatThread = {
-    id: `c-${teacherId}`,
-    teacherId,
-    lastMessage: 'لا رسائل بعد — ابدأ المحادثة',
-    lastAt: new Date().toISOString(),
-    unread: 0,
-  };
-  await writeJson(CHAT_KEY, {
-    threads: [thread, ...data.threads],
-    messages: data.messages,
-  });
+  const { thread } = await ensureStudentChatWithTeacher(teacherId);
   return thread;
 }
 

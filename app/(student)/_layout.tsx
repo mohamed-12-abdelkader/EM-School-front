@@ -22,6 +22,9 @@ export default function StudentRootLayout() {
   if (user.role === 'teacher') {
     return <Redirect href={'/teacher' as never} />;
   }
+  if (user.role === 'parent') {
+    return <Redirect href={'/(parent)' as never} />;
+  }
   if (user.role !== 'student') {
     return <Redirect href={'/login' as never} />;
   }

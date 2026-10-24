@@ -7,12 +7,17 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { loginRequest, loginStudentRequest } from '@/api/auth';
+import {
+  loginParentRequest,
+  loginRequest,
+  loginStudentRequest,
+} from '@/api/auth';
 import { ApiError } from '@/api/client';
 import {
   clearSession,
   loadSession,
   saveSession,
+  type ParentSessionMeta,
   type StudentSessionMeta,
 } from '@/auth/storage';
 import { onUnauthorized } from '@/auth/sessionEvents';
@@ -23,13 +28,16 @@ interface AuthContextValue {
   token: string | null;
   loading: boolean;
   studentMeta: StudentSessionMeta | null;
+  parentMeta: ParentSessionMeta | null;
   login: (email: string, password: string) => Promise<AuthUser>;
   loginStudent: (loginCode: string) => Promise<AuthUser>;
+  loginParent: (loginCode: string) => Promise<AuthUser>;
   logout: () => Promise<void>;
   isAdmin: boolean;
   isSchoolAdmin: boolean;
   isStudent: boolean;
   isTeacher: boolean;
+  isParent: boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -50,6 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [studentMeta, setStudentMeta] = useState<StudentSessionMeta | null>(null);
+  const [parentMeta, setParentMeta] = useState<ParentSessionMeta | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -61,6 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(session.user);
           setToken(session.token);
           setStudentMeta(session.studentMeta);
+          setParentMeta(session.parentMeta);
         }
       } catch {
         // Keep logged out if storage is unavailable
@@ -79,16 +89,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
       setToken(null);
       setStudentMeta(null);
+      setParentMeta(null);
     });
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
     try {
       const data = await loginRequest(email.trim(), password);
-      await saveSession(data.token, data.user, null);
+      await saveSession(data.token, data.user, null, null);
       setUser(data.user);
       setToken(data.token);
       setStudentMeta(null);
+      setParentMeta(null);
       return data.user;
     } catch (err) {
       mapNetworkError(err);
@@ -102,10 +114,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         school: data.school,
         profile: data.profile,
       };
-      await saveSession(data.token, data.user, meta);
+      await saveSession(data.token, data.user, meta, null);
       setUser(data.user);
       setToken(data.token);
       setStudentMeta(meta);
+      setParentMeta(null);
+      return data.user;
+    } catch (err) {
+      mapNetworkError(err);
+    }
+  }, []);
+
+  const loginParent = useCallback(async (loginCode: string) => {
+    try {
+      const data = await loginParentRequest(loginCode.trim());
+      const meta: ParentSessionMeta = { school: data.school };
+      await saveSession(data.token, data.user, null, meta);
+      setUser(data.user);
+      setToken(data.token);
+      setStudentMeta(null);
+      setParentMeta(meta);
       return data.user;
     } catch (err) {
       mapNetworkError(err);
@@ -117,6 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setToken(null);
     setStudentMeta(null);
+    setParentMeta(null);
   }, []);
 
   const value = useMemo(
@@ -125,15 +154,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       token,
       loading,
       studentMeta,
+      parentMeta,
       login,
       loginStudent,
+      loginParent,
       logout,
       isAdmin: user?.role === 'admin',
       isSchoolAdmin: user?.role === 'school_admin',
       isStudent: user?.role === 'student',
       isTeacher: user?.role === 'teacher',
+      isParent: user?.role === 'parent',
     }),
-    [user, token, loading, studentMeta, login, loginStudent, logout],
+    [
+      user,
+      token,
+      loading,
+      studentMeta,
+      parentMeta,
+      login,
+      loginStudent,
+      loginParent,
+      logout,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

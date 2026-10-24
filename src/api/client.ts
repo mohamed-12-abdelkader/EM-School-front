@@ -45,8 +45,8 @@ async function parseError(res: Response) {
   return new ApiError(message, res.status, details);
 }
 
-/** Fail fast so teacher UI does not spin for 60s+ on dead DB connections. */
-const DEFAULT_TIMEOUT_MS = 12_000;
+/** Fail fast on dead DB — keep above typical Aiven latency for heavier student queries. */
+const DEFAULT_TIMEOUT_MS = 20_000;
 
 export async function apiFetch<T>(
   path: string,

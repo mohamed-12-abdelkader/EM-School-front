@@ -3,10 +3,12 @@ import {
   ActivityIndicator,
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
   type ViewStyle,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -19,6 +21,153 @@ import { studentTheme as t } from './theme';
 const rtlProps =
   Platform.OS === 'web' ? ({ dir: 'rtl' } as Record<string, string>) : {};
 export const rowRtl = Platform.OS === 'web' ? 'row' : 'row-reverse';
+
+/** Light modern page chrome shared by student list screens (no dark hero bar). */
+export function StudentPageShell({
+  title,
+  subtitle,
+  children,
+  onBack = true,
+  right,
+  refreshing,
+  onRefresh,
+  icon = 'BookOpen',
+}: {
+  title: string;
+  subtitle?: string;
+  children: ReactNode;
+  onBack?: boolean | (() => void);
+  right?: ReactNode;
+  refreshing?: boolean;
+  onRefresh?: () => void;
+  icon?: string;
+}) {
+  const router = useRouter();
+  const { width } = useWindowDimensions();
+  const wide = width >= 720;
+
+  return (
+    <View style={shellStyles.root}>
+      <View style={shellStyles.blob} pointerEvents="none" />
+      <SafeAreaView style={shellStyles.safe} edges={['top']} {...rtlProps}>
+        <ScrollView
+          contentContainerStyle={[
+            shellStyles.content,
+            wide && shellStyles.contentWide,
+            {
+              maxWidth: wide ? 880 : undefined,
+              alignSelf: 'center',
+              width: '100%',
+            },
+          ]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            onRefresh ? (
+              <RefreshControl
+                refreshing={!!refreshing}
+                onRefresh={onRefresh}
+                tintColor={t.brand}
+              />
+            ) : undefined
+          }
+        >
+          <View style={[shellStyles.header, { flexDirection: rowRtl as 'row' }]}>
+            {onBack ? (
+              <Pressable
+                onPress={() =>
+                  typeof onBack === 'function' ? onBack() : router.back()
+                }
+                style={shellStyles.backBtn}
+                hitSlop={8}
+                accessibilityLabel="رجوع"
+              >
+                <Icon name="ChevronRight" size={22} color={t.ink} />
+              </Pressable>
+            ) : (
+              <View style={shellStyles.headerBadge}>
+                <Icon name={icon} size={20} color={t.brand} />
+              </View>
+            )}
+            <View style={shellStyles.headerText}>
+              <Text style={shellStyles.title}>{title}</Text>
+              {subtitle ? (
+                <Text style={shellStyles.subtitle}>{subtitle}</Text>
+              ) : null}
+            </View>
+            {right ? <View style={shellStyles.right}>{right}</View> : null}
+          </View>
+          {children}
+        </ScrollView>
+      </SafeAreaView>
+    </View>
+  );
+}
+
+const shellStyles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: t.canvas },
+  blob: {
+    position: 'absolute',
+    top: -90,
+    end: -50,
+    width: 240,
+    height: 240,
+    borderRadius: 120,
+    backgroundColor: t.brandSoft,
+    opacity: 0.65,
+  },
+  safe: { flex: 1 },
+  content: {
+    paddingHorizontal: t.space.lg,
+    paddingBottom: t.space['4xl'],
+    gap: t.space.lg,
+  },
+  contentWide: { paddingHorizontal: t.space['2xl'] },
+  header: {
+    alignItems: 'center',
+    gap: 12,
+    paddingTop: t.space.xs,
+  },
+  backBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: t.card,
+    borderWidth: 1,
+    borderColor: t.line,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...t.shadow.card,
+  },
+  headerBadge: {
+    width: 46,
+    height: 46,
+    borderRadius: 16,
+    backgroundColor: t.card,
+    borderWidth: 1,
+    borderColor: t.line,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...t.shadow.card,
+  },
+  headerText: { flex: 1, gap: 4 },
+  title: {
+    fontFamily: t.fonts.bold,
+    fontSize: 24,
+    color: t.ink,
+    textAlign: 'right',
+    letterSpacing: -0.3,
+    writingDirection: 'rtl',
+  },
+  subtitle: {
+    fontFamily: t.fonts.regular,
+    fontSize: 13,
+    color: t.inkSoft,
+    textAlign: 'right',
+    writingDirection: 'rtl',
+  },
+  right: { alignItems: 'flex-start' },
+});
 
 export function StudentScreen({
   title,

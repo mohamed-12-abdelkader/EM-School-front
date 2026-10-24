@@ -7,8 +7,12 @@ export type CompetitionStatus = 'open' | 'joined' | 'ended';
 export type NotificationKind =
   | 'assignment'
   | 'lecture'
+  | 'lesson'
+  | 'task'
   | 'exam'
+  | 'grade'
   | 'message'
+  | 'timetable'
   | 'competition'
   | 'announcement'
   | 'result';
@@ -115,6 +119,13 @@ export interface Exam {
   isOfficial?: boolean;
   date?: string;
   attempted?: boolean;
+  /** Open attempt with server timer (not yet submitted) */
+  inProgress?: boolean;
+  attemptId?: string | null;
+  startedAt?: string | null;
+  endsAt?: string | null;
+  remainingSeconds?: number | null;
+  serverNow?: string | null;
   score?: number | null;
   maxScore?: number | null;
   totalPoints?: number | null;
@@ -143,6 +154,8 @@ export interface TermResult {
 export interface ChatThread {
   id: string;
   teacherId: string;
+  teacherName?: string | null;
+  studentId?: string;
   lastMessage: string;
   lastAt: string;
   unread: number;
@@ -226,6 +239,7 @@ export interface StudentDashboardData {
   pendingAssignments: number;
   pendingExams: number;
   upcomingLectures: number;
+  unreadNotifications: number;
   completionRate: number;
   weekProgress: number[];
   todaySlots: ScheduleSlot[];
@@ -233,5 +247,6 @@ export interface StudentDashboardData {
   dueAssignments: Assignment[];
   openExams: Exam[];
   recentResults: ExamAttempt[];
+  recentNotifications: StudentNotification[];
   competitions: Competition[];
 }

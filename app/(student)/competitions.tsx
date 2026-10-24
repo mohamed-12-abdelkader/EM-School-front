@@ -6,10 +6,11 @@ import {
   LoadingBlock,
   ListRow,
   SectionTitle,
-  StudentScreen,
+  StudentPageShell,
   formatShortDate,
   rowRtl,
 } from '@/components/student/ui';
+import { studentTheme as t } from '@/components/student/theme';
 import { getGamification } from '@/services/studentPortal';
 import type {
   BadgeItem,
@@ -17,7 +18,7 @@ import type {
   LeaderboardRow,
   PointsEntry,
 } from '@/types/studentPortal';
-import { colors, fonts, radii, spacing } from '@/theme/tokens';
+
 
 export default function CompetitionsScreen() {
   const router = useRouter();
@@ -46,7 +47,11 @@ export default function CompetitionsScreen() {
   );
 
   return (
-    <StudentScreen title="النقاط والمسابقات" onBack hero>
+    <StudentPageShell
+      title="النقاط والمسابقات"
+      subtitle="رتبتك وشاراتك"
+      icon="Trophy"
+    >
       {loading ? (
         <LoadingBlock />
       ) : (
@@ -155,58 +160,66 @@ export default function CompetitionsScreen() {
           )}
         </>
       )}
-    </StudentScreen>
+    </StudentPageShell>
   );
 }
 
 const styles = StyleSheet.create({
   points: {
-    backgroundColor: colors.secondarySoft,
-    borderRadius: radii.lg,
-    padding: spacing.lg,
+    backgroundColor: t.brandSoft,
+    borderRadius: t.radius.xl,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    padding: t.space.lg,
     alignItems: 'center',
+    ...t.shadow.card,
   },
   pointsLabel: {
-    fontFamily: fonts.medium,
+    fontFamily: t.fonts.medium,
     fontSize: 13,
-    color: colors.secondary,
+    color: t.brandDeep,
   },
   pointsValue: {
-    fontFamily: fonts.bold,
-    fontSize: 34,
-    color: colors.secondary,
+    fontFamily: t.fonts.bold,
+    fontSize: 36,
+    color: t.brandDeep,
+    fontVariant: ['tabular-nums'],
   },
   boardRow: {
     flexDirection: rowRtl,
     alignItems: 'center',
-    gap: spacing.md,
-    paddingVertical: spacing.sm,
+    gap: t.space.md,
+    paddingVertical: t.space.sm,
+    paddingHorizontal: t.space.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
+    borderBottomColor: t.line,
   },
-  boardMe: { backgroundColor: colors.primarySoft, borderRadius: radii.sm },
+  boardMe: {
+    backgroundColor: t.brandSoft,
+    borderRadius: t.radius.md,
+  },
   rank: {
-    fontFamily: fonts.bold,
+    fontFamily: t.fonts.bold,
     fontSize: 13,
-    color: colors.primary,
+    color: t.brand,
     width: 36,
     textAlign: 'center',
   },
   boardName: {
     flex: 1,
-    fontFamily: fonts.medium,
+    fontFamily: t.fonts.medium,
     fontSize: 14,
-    color: colors.text,
+    color: t.ink,
     textAlign: 'right',
   },
   boardPts: {
-    fontFamily: fonts.semiBold,
+    fontFamily: t.fonts.semiBold,
     fontSize: 13,
-    color: colors.textSecondary,
+    color: t.inkSoft,
   },
   plus: {
-    fontFamily: fonts.semiBold,
+    fontFamily: t.fonts.semiBold,
     fontSize: 13,
-    color: colors.success,
+    color: t.success,
   },
 });

@@ -275,3 +275,102 @@ export function upsertTaskGrade(
     body: JSON.stringify(body),
   });
 }
+
+export function getTeacherChats() {
+  return apiFetch<{
+    threads: Array<{
+      id: string;
+      teacherId: string;
+      studentId: string;
+      studentName: string;
+      classroomName?: string | null;
+      lastMessage: string;
+      lastAt: string;
+      unread: number;
+    }>;
+  }>('/teacher/portal/chats');
+}
+
+export function ensureTeacherChatWithStudent(studentId: number | string) {
+  return apiFetch<{
+    thread: {
+      id: string;
+      teacherId: string;
+      studentId: string;
+      studentName: string;
+      classroomName?: string | null;
+      lastMessage: string;
+      lastAt: string;
+      unread: number;
+    };
+  }>('/teacher/portal/chats', {
+    method: 'POST',
+    body: JSON.stringify({ student_id: Number(studentId) }),
+  });
+}
+
+export function getTeacherChatMessages(threadId: string) {
+  return apiFetch<{
+    messages: Array<{
+      id: string;
+      threadId: string;
+      from: 'student' | 'teacher';
+      text: string;
+      at: string;
+      read: boolean;
+    }>;
+  }>(`/teacher/portal/chats/${threadId}/messages`);
+}
+
+export function sendTeacherChatMessage(threadId: string, text: string) {
+  return apiFetch<{
+    message: {
+      id: string;
+      threadId: string;
+      from: 'student' | 'teacher';
+      text: string;
+      at: string;
+      read: boolean;
+    };
+  }>(`/teacher/portal/chats/${threadId}/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ text }),
+  });
+}
+
+export type TeacherStudentOpinion = {
+  id: number;
+  title: string | null;
+  body: string;
+  subject_id: number | null;
+  subject_name: string | null;
+  classroom_id: number | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export function listTeacherStudentOpinions(studentId: number, classroomId: number) {
+  return apiFetch<{
+    student: { id: number; name: string; classroom_id: number };
+    opinions: TeacherStudentOpinion[];
+  }>(`/teacher/portal/students/${studentId}/opinions?classroom_id=${classroomId}`);
+}
+
+export function createTeacherStudentOpinion(body: {
+  student_id: number;
+  classroom_id: number;
+  subject_id?: number | null;
+  title?: string | null;
+  body: string;
+}) {
+  return apiFetch<{ opinion: TeacherStudentOpinion }>('/teacher/portal/opinions', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+export function deleteTeacherStudentOpinion(id: number) {
+  return apiFetch<{ message: string }>(`/teacher/portal/opinions/${id}`, {
+    method: 'DELETE',
+  });
+}

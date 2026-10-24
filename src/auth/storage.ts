@@ -10,10 +10,15 @@ const TOKEN_KEY = 'em_auth_token';
 const USER_KEY = 'em_auth_user';
 const EMAIL_KEY = 'em_auth_email';
 const STUDENT_META_KEY = 'em_auth_student_meta';
+const PARENT_META_KEY = 'em_auth_parent_meta';
 
 export interface StudentSessionMeta {
   school: StudentLoginSchool;
   profile: StudentLoginProfile;
+}
+
+export interface ParentSessionMeta {
+  school: StudentLoginSchool;
 }
 
 /** Web: also write localStorage so the session survives Expo web reloads. */
@@ -64,6 +69,7 @@ export async function saveSession(
   token: string,
   user: AuthUser,
   studentMeta?: StudentSessionMeta | null,
+  parentMeta?: ParentSessionMeta | null,
 ) {
   await setItem(TOKEN_KEY, token);
   await setItem(USER_KEY, JSON.stringify(user));
@@ -73,24 +79,37 @@ export async function saveSession(
   } else {
     await removeItems([STUDENT_META_KEY]);
   }
+  if (parentMeta) {
+    await setItem(PARENT_META_KEY, JSON.stringify(parentMeta));
+  } else {
+    await removeItems([PARENT_META_KEY]);
+  }
 }
 
 export async function clearSession() {
-  await removeItems([TOKEN_KEY, USER_KEY, STUDENT_META_KEY]);
+  await removeItems([TOKEN_KEY, USER_KEY, STUDENT_META_KEY, PARENT_META_KEY]);
 }
 
 export async function loadSession(): Promise<{
   token: string;
   user: AuthUser;
   studentMeta: StudentSessionMeta | null;
+  parentMeta: ParentSessionMeta | null;
 } | null> {
-  const pairs = await multiGet([TOKEN_KEY, USER_KEY, STUDENT_META_KEY]);
+  const pairs = await multiGet([
+    TOKEN_KEY,
+    USER_KEY,
+    STUDENT_META_KEY,
+    PARENT_META_KEY,
+  ]);
   const token = pairs[0][1];
   const userRaw = pairs[1][1];
   const metaRaw = pairs[2][1];
+  const parentMetaRaw = pairs[3][1];
   if (!token || !userRaw) return null;
   try {
     let studentMeta: StudentSessionMeta | null = null;
+    let parentMeta: ParentSessionMeta | null = null;
     if (metaRaw) {
       try {
         studentMeta = JSON.parse(metaRaw) as StudentSessionMeta;
@@ -98,10 +117,18 @@ export async function loadSession(): Promise<{
         studentMeta = null;
       }
     }
+    if (parentMetaRaw) {
+      try {
+        parentMeta = JSON.parse(parentMetaRaw) as ParentSessionMeta;
+      } catch {
+        parentMeta = null;
+      }
+    }
     return {
       token,
       user: JSON.parse(userRaw) as AuthUser,
       studentMeta,
+      parentMeta,
     };
   } catch {
     await clearSession();

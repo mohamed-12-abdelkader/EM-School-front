@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Icon } from '@/components/ui';
 import {
   DAY_AR,
@@ -12,14 +12,29 @@ import {
   rowRtl,
 } from '@/components/teacher/ui';
 import { teacherTheme as t } from '@/components/teacher/theme';
-import { getTeacherClassDetail } from '@/api/teacherPortal';
+import {
+  ensureTeacherChatWithStudent,
+  getTeacherClassDetail,
+} from '@/api/teacherPortal';
 
 export default function TeacherClassDetailScreen() {
   const { id, subject_id } = useLocalSearchParams<{ id: string; subject_id?: string }>();
+  const router = useRouter();
   const [data, setData] = useState<Awaited<ReturnType<typeof getTeacherClassDetail>> | null>(
     null,
   );
   const [loading, setLoading] = useState(true);
+  const [chatError, setChatError] = useState('');
+
+  const openChat = async (studentId: number) => {
+    setChatError('');
+    try {
+      const { thread } = await ensureTeacherChatWithStudent(studentId);
+      router.push(`/teacher/chat/${thread.id}` as never);
+    } catch (err) {
+      setChatError(err instanceof Error ? err.message : 'تعذر فتح المحادثة');
+    }
+  };
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -79,6 +94,7 @@ export default function TeacherClassDetailScreen() {
 
           <FadeIn delay={80}>
             <Text style={styles.section}>الطلاب ({data.students.length})</Text>
+            {chatError ? <Text style={styles.chatError}>{chatError}</Text> : null}
             {data.students.length === 0 ? (
               <EmptyBlock icon="Users" title="لا يوجد طلاب في هذا الصف" />
             ) : (
@@ -95,6 +111,34 @@ export default function TeacherClassDetailScreen() {
                         {st.status || 'active'}
                       </Text>
                     </View>
+                    <Pressable
+                      onPress={() =>
+                        router.push(
+                          {
+                            pathname: '/teacher/opinion/[studentId]',
+                            params: {
+                              studentId: String(st.id),
+                              classroom_id: String(data.classroom.id),
+                              subject_id: subject_id ? String(subject_id) : '',
+                              name: st.name,
+                            },
+                          } as never,
+                        )
+                      }
+                      style={styles.msgBtn}
+                      hitSlop={6}
+                      accessibilityLabel={`كتابة رأي عن ${st.name}`}
+                    >
+                      <Icon name="MessageSquareQuote" size={16} color={t.brand} />
+                    </Pressable>
+                    <Pressable
+                      onPress={() => openChat(st.id)}
+                      style={styles.msgBtn}
+                      hitSlop={6}
+                      accessibilityLabel={`مراسلة ${st.name}`}
+                    >
+                      <Icon name="MessageSquare" size={16} color={t.brand} />
+                    </Pressable>
                   </View>
                 </SoftCard>
               ))
@@ -155,5 +199,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: t.inkSoft,
     writingDirection: 'rtl',
+  },
+  msgBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: t.brandSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chatError: {
+    fontFamily: t.fonts.medium,
+    fontSize: 12,
+    color: t.danger,
+    textAlign: 'right',
+    marginBottom: 6,
   },
 });

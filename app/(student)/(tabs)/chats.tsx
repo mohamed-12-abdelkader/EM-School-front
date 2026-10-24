@@ -6,29 +6,43 @@ import {
   FadeIn,
   LoadingBlock,
   SoftCard,
-  StudentScreen,
+  StudentPageShell,
   formatShortDate,
   formatTime,
   rowRtl,
 } from '@/components/student/ui';
 import { studentTheme as t } from '@/components/student/theme';
-import { getConversations, getTeacher } from '@/services/studentPortal';
+import {
+  ensureThreadForTeacher,
+  getConversations,
+  getTeacher,
+} from '@/services/studentPortal';
 import type { ChatThread } from '@/types/studentPortal';
 
 export default function ChatsTab() {
   const router = useRouter();
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useFocusEffect(
     useCallback(() => {
       let alive = true;
       (async () => {
         setLoading(true);
-        const data = await getConversations();
-        if (alive) {
-          setThreads(data);
-          setLoading(false);
+        setError('');
+        try {
+          const data = await getConversations();
+          if (alive) setThreads(data);
+        } catch (err) {
+          if (alive) {
+            setThreads([]);
+            setError(
+              err instanceof Error ? err.message : 'تعذر تحميل المحادثات',
+            );
+          }
+        } finally {
+          if (alive) setLoading(false);
         }
       })();
       return () => {
@@ -37,8 +51,27 @@ export default function ChatsTab() {
     }, []),
   );
 
+  const openThread = async (thread: ChatThread) => {
+    try {
+      let id = thread.id;
+      if (id.startsWith('pending-')) {
+        const ensured = await ensureThreadForTeacher(thread.teacherId);
+        id = ensured.id;
+      }
+      router.push(`/(student)/chat/${id}` as never);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'تعذر فتح المحادثة');
+    }
+  };
+
   return (
-    <StudentScreen title="المحادثات" subtitle="تواصل مع مدرسيك" hero>
+    <StudentPageShell
+      title="المحادثات"
+      subtitle="تواصل مع مدرسيك"
+      icon="MessagesSquare"
+      onBack={false}
+    >
+      {error ? <Text style={styles.error}>{error}</Text> : null}
       {loading ? (
         <LoadingBlock />
       ) : threads.length === 0 ? (
@@ -48,56 +81,70 @@ export default function ChatsTab() {
           description="عند نشر دروس أو جدول لموادك ستظهر محادثات مدرسيك هنا"
         />
       ) : (
-        threads.map((thread, i) => {
-          const teacher = getTeacher(thread.teacherId);
-          return (
-            <FadeIn key={thread.id} delay={i * 50}>
-              <SoftCard
-                onPress={() =>
-                  router.push(`/(student)/chat/${thread.id}` as never)
-                }
-                padded={false}
-              >
-                <View style={styles.row}>
-                  {teacher ? (
-                    <Avatar
-                      name={teacher.name}
-                      color={teacher.avatarColor}
-                      size={52}
-                    />
-                  ) : null}
-                  <View style={styles.main}>
-                    <View style={styles.top}>
-                      <Text style={styles.name}>{teacher?.name || 'مدرس'}</Text>
-                      <Text style={styles.time}>
-                        {formatShortDate(thread.lastAt)}
-                      </Text>
-                    </View>
-                    <View style={styles.bottom}>
-                      <Text style={styles.preview} numberOfLines={1}>
-                        {thread.lastMessage}
-                      </Text>
-                      {thread.unread > 0 ? (
-                        <Badge label={String(thread.unread)} tone="primary" />
-                      ) : (
-                        <Text style={styles.clock}>{formatTime(thread.lastAt)}</Text>
-                      )}
+        <View style={styles.list}>
+          {threads.map((thread, i) => {
+            const teacher = getTeacher(thread.teacherId);
+            return (
+              <FadeIn key={thread.id} delay={i * 50}>
+                <SoftCard onPress={() => openThread(thread)} padded={false}>
+                  <View style={styles.row}>
+                    {teacher ? (
+                      <Avatar
+                        name={teacher.name}
+                        color={teacher.avatarColor}
+                        size={52}
+                      />
+                    ) : null}
+                    <View style={styles.main}>
+                      <View style={styles.top}>
+                        <Text style={styles.name}>
+                          {teacher?.name || thread.teacherName || 'مدرس'}
+                        </Text>
+                        <Text style={styles.time}>
+                          {formatShortDate(thread.lastAt)}
+                        </Text>
+                      </View>
+                      <View style={styles.bottom}>
+                        <Text style={styles.preview} numberOfLines={1}>
+                          {thread.lastMessage}
+                        </Text>
+                        {thread.unread > 0 ? (
+                          <Badge
+                            label={String(thread.unread)}
+                            tone="primary"
+                          />
+                        ) : (
+                          <Text style={styles.clock}>
+                            {formatTime(thread.lastAt)}
+                          </Text>
+                        )}
+                      </View>
                     </View>
                   </View>
-                </View>
-              </SoftCard>
-            </FadeIn>
-          );
-        })
+                </SoftCard>
+              </FadeIn>
+            );
+          })}
+        </View>
       )}
       <Text style={styles.note}>
-        المحادثات تجريبية ومحفوظة محلياً — ليست رسائل حقيقية على الخادم.
+        الرسائل تصل مباشرة إلى لوحة المدرس ويمكنه الرد منها.
       </Text>
-    </StudentScreen>
+    </StudentPageShell>
   );
 }
 
 const styles = StyleSheet.create({
+  error: {
+    fontFamily: t.fonts.medium,
+    fontSize: 12,
+    color: t.danger,
+    textAlign: 'center',
+    backgroundColor: t.dangerSoft,
+    padding: 10,
+    borderRadius: t.radius.md,
+  },
+  list: { gap: 10 },
   row: {
     flexDirection: rowRtl,
     alignItems: 'center',

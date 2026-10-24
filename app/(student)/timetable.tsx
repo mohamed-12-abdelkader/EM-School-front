@@ -7,7 +7,7 @@ import {
   FadeIn,
   LoadingBlock,
   SoftCard,
-  StudentScreen,
+  StudentPageShell,
   lectureStatusLabel,
   rowRtl,
 } from '@/components/student/ui';
@@ -166,7 +166,22 @@ export default function TimetableScreen() {
   const upcomingCount = slots.filter((s) => s.status === 'upcoming').length;
 
   return (
-    <StudentScreen title="الجدول الدراسي" subtitle={subtitle} onBack hero>
+    <StudentPageShell
+      title="الجدول الدراسي"
+      subtitle={subtitle}
+      icon="CalendarDays"
+      right={
+        day !== today ? (
+          <Pressable
+            onPress={() => setDay(today)}
+            style={styles.todayBtn}
+            hitSlop={6}
+          >
+            <Text style={styles.todayBtnText}>اليوم</Text>
+          </Pressable>
+        ) : null
+      }
+    >
       <FadeIn>
         <View style={styles.summary}>
           <View style={styles.summaryIcon}>
@@ -184,15 +199,6 @@ export default function TimetableScreen() {
                     : `${slots.length} حصة · ${upcomingCount} قادمة`}
             </Text>
           </View>
-          {day !== today ? (
-            <Pressable
-              onPress={() => setDay(today)}
-              style={styles.todayBtn}
-              hitSlop={6}
-            >
-              <Text style={styles.todayBtnText}>اليوم</Text>
-            </Pressable>
-          ) : null}
         </View>
       </FadeIn>
 
@@ -263,7 +269,7 @@ export default function TimetableScreen() {
           ))}
         </View>
       )}
-    </StudentScreen>
+    </StudentPageShell>
   );
 }
 

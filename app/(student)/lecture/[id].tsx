@@ -11,9 +11,9 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { EmptyState, Icon } from '@/components/ui';
 import {
   FadeIn,
+  IconBadge,
   LoadingBlock,
-  SoftCard,
-  StudentScreen,
+  StudentPageShell,
   formatShortDate,
   rowRtl,
 } from '@/components/student/ui';
@@ -56,13 +56,13 @@ function attachKind(a: LessonAttachment): 'pdf' | 'youtube' | 'video' | 'link' {
 function kindMeta(kind: ReturnType<typeof attachKind>) {
   switch (kind) {
     case 'pdf':
-      return { icon: 'FileText', label: 'PDF', color: t.danger, bg: '#FEE2E2' };
+      return { icon: 'FileText', label: 'PDF', color: t.danger, soft: t.dangerSoft };
     case 'youtube':
-      return { icon: 'CirclePlay', label: 'يوتيوب', color: '#DC2626', bg: '#FEE2E2' };
+      return { icon: 'CirclePlay', label: 'يوتيوب', color: '#DC2626', soft: '#FEE2E2' };
     case 'video':
-      return { icon: 'Play', label: 'فيديو', color: t.sky, bg: t.skySoft };
+      return { icon: 'Play', label: 'فيديو', color: t.sky, soft: t.skySoft };
     default:
-      return { icon: 'ArrowUpRight', label: 'رابط', color: t.brand, bg: t.brandSoft };
+      return { icon: 'ArrowUpRight', label: 'رابط', color: t.brand, soft: t.brandSoft };
   }
 }
 
@@ -83,29 +83,25 @@ export default function LectureDetailScreen() {
   >(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [playingId, setPlayingId] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      setLecture(await getLecture(String(id)));
+    } catch (e) {
+      setLecture(null);
+      setError(e instanceof Error ? e.message : 'تعذر تحميل الدرس');
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
 
   useFocusEffect(
     useCallback(() => {
-      let alive = true;
-      (async () => {
-        setLoading(true);
-        setError(null);
-        try {
-          const data = await getLecture(String(id));
-          if (alive) setLecture(data);
-        } catch (e) {
-          if (alive) {
-            setLecture(null);
-            setError(e instanceof Error ? e.message : 'تعذر تحميل الدرس');
-          }
-        } finally {
-          if (alive) setLoading(false);
-        }
-      })();
-      return () => {
-        alive = false;
-      };
-    }, [id]),
+      load();
+    }, [load]),
   );
 
   const subject = lecture ? getSubject(lecture.subjectId) : undefined;
@@ -113,6 +109,7 @@ export default function LectureDetailScreen() {
     (lecture as { subjectName?: string } | null)?.subjectName ||
     subject?.name ||
     'مادة';
+  const accent = subject?.color || t.brand;
 
   const groups = useMemo(() => {
     const list = lecture?.attachments || [];
@@ -127,21 +124,23 @@ export default function LectureDetailScreen() {
 
   if (loading) {
     return (
-      <StudentScreen title="الدرس" onBack hero>
+      <StudentPageShell title="الدرس" icon="Presentation">
         <LoadingBlock />
-      </StudentScreen>
+      </StudentPageShell>
     );
   }
 
   if (!lecture) {
     return (
-      <StudentScreen title="الدرس" onBack hero>
+      <StudentPageShell title="الدرس" icon="Presentation">
         <EmptyState
           icon="Presentation"
           title="الدرس غير موجود"
           description={error || 'تأكد أن الدرس منشور لفصلك من المدرس'}
+          actionLabel="إعادة المحاولة"
+          onAction={load}
         />
-      </StudentScreen>
+      </StudentPageShell>
     );
   }
 
@@ -149,33 +148,52 @@ export default function LectureDetailScreen() {
   const summary = displayTitle(lecture.summary || '', '');
 
   return (
-    <StudentScreen title={title} subtitle={subjectName} onBack hero>
+    <StudentPageShell
+      title={title}
+      subtitle={subjectName}
+      icon="Presentation"
+      refreshing={false}
+      onRefresh={load}
+    >
       <FadeIn>
-        <SoftCard style={styles.hero}>
-          <View style={styles.heroTop}>
-            <View style={styles.badge}>
-              <Icon name="Presentation" size={14} color={t.brand} />
-              <Text style={styles.badgeText}>درس مسجّل</Text>
+        <View style={styles.hero}>
+          <View style={[styles.heroAccent, { backgroundColor: accent }]} />
+          <View style={styles.heroBody}>
+            <View style={[styles.heroTop, { flexDirection: rowRtl as 'row' }]}>
+              <View style={[styles.badge, { backgroundColor: `${accent}18` }]}>
+                <Icon name="Presentation" size={14} color={accent} />
+                <Text style={[styles.badgeText, { color: accent }]}>
+                  درس مسجّل
+                </Text>
+              </View>
+              <Text style={styles.date}>{formatShortDate(lecture.date)}</Text>
             </View>
-            <Text style={styles.date}>{formatShortDate(lecture.date)}</Text>
+
+            <Text style={styles.heroTitle}>{title}</Text>
+            {summary ? <Text style={styles.summary}>{summary}</Text> : null}
+
+            <View style={styles.stats}>
+              <Stat
+                value={groups.videos.length}
+                label="فيديو"
+                color={t.sky}
+                soft={t.skySoft}
+              />
+              <Stat
+                value={groups.pdfs.length}
+                label="PDF"
+                color={t.danger}
+                soft={t.dangerSoft}
+              />
+              <Stat
+                value={groups.links.length}
+                label="روابط"
+                color={t.brand}
+                soft={t.brandSoft}
+              />
+            </View>
           </View>
-          <Text style={styles.heroTitle}>{title}</Text>
-          {summary ? <Text style={styles.summary}>{summary}</Text> : null}
-          <View style={styles.stats}>
-            <View style={styles.stat}>
-              <Text style={styles.statNum}>{groups.videos.length}</Text>
-              <Text style={styles.statLabel}>فيديو</Text>
-            </View>
-            <View style={styles.stat}>
-              <Text style={styles.statNum}>{groups.pdfs.length}</Text>
-              <Text style={styles.statLabel}>PDF</Text>
-            </View>
-            <View style={styles.stat}>
-              <Text style={styles.statNum}>{groups.links.length}</Text>
-              <Text style={styles.statLabel}>روابط</Text>
-            </View>
-          </View>
-        </SoftCard>
+        </View>
       </FadeIn>
 
       {groups.all.length === 0 ? (
@@ -188,21 +206,33 @@ export default function LectureDetailScreen() {
         <>
           {groups.videos.length > 0 ? (
             <Section
-              title="فيديوهات"
+              title="الفيديوهات"
+              hint="اضغط للتشغيل أو الفتح"
               items={groups.videos}
+              playingId={playingId}
+              onPlay={(a) => {
+                const yt = youtubeId(a.fileUrl);
+                if (Platform.OS === 'web' && (yt || isDirectVideo(a.fileUrl))) {
+                  setPlayingId((cur) => (cur === a.id ? null : a.id));
+                  return;
+                }
+                openAttachment(a.fileUrl);
+              }}
               onOpen={openAttachment}
             />
           ) : null}
           {groups.pdfs.length > 0 ? (
             <Section
               title="ملفات PDF"
+              hint="افتح للقراءة أو التحميل"
               items={groups.pdfs}
               onOpen={openAttachment}
             />
           ) : null}
           {groups.links.length > 0 ? (
             <Section
-              title="روابط"
+              title="روابط مفيدة"
+              hint="تفتح في نافذة جديدة"
               items={groups.links}
               onOpen={openAttachment}
             />
@@ -211,72 +241,167 @@ export default function LectureDetailScreen() {
       )}
 
       <Pressable
-        style={({ pressed }) => [styles.subjectBtn, pressed && { opacity: 0.9 }]}
+        style={({ pressed }) => [
+          styles.subjectBtn,
+          { flexDirection: rowRtl as 'row' },
+          pressed && { opacity: 0.92 },
+        ]}
         onPress={() =>
           router.push(`/(student)/subject/${lecture.subjectId}` as never)
         }
       >
-        <Icon name="BookOpen" size={18} color={t.brand} />
-        <Text style={styles.subjectBtnText}>عرض المادة</Text>
+        <IconBadge name="BookOpen" color={accent} size={44} />
+        <View style={styles.subjectText}>
+          <Text style={styles.subjectBtnText}>عرض المادة</Text>
+          <Text style={styles.subjectSub}>{subjectName}</Text>
+        </View>
         <Icon name="ChevronLeft" size={18} color={t.inkMute} />
       </Pressable>
-    </StudentScreen>
+    </StudentPageShell>
+  );
+}
+
+function Stat({
+  value,
+  label,
+  color,
+  soft,
+}: {
+  value: number;
+  label: string;
+  color: string;
+  soft: string;
+}) {
+  return (
+    <View style={[styles.stat, { backgroundColor: soft, borderColor: soft }]}>
+      <Text style={[styles.statNum, { color }]}>{value}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
+    </View>
   );
 }
 
 function Section({
   title,
+  hint,
   items,
+  playingId,
+  onPlay,
   onOpen,
 }: {
   title: string;
+  hint?: string;
   items: LessonAttachment[];
+  playingId?: string | null;
+  onPlay?: (a: LessonAttachment) => void;
   onOpen: (url: string) => void;
 }) {
   return (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      {items.map((a, i) => {
-        const kind = attachKind(a);
-        const meta = kindMeta(kind);
-        const label = displayTitle(a.title, meta.label);
-        return (
-          <FadeIn key={a.id} delay={i * 40}>
-            <SoftCard
-              padded={false}
-              onPress={() => onOpen(a.fileUrl)}
-              style={styles.attachCard}
-            >
-              <View style={styles.attachRow}>
-                <View style={[styles.attachIcon, { backgroundColor: meta.bg }]}>
-                  <Icon name={meta.icon} size={20} color={meta.color} />
-                </View>
-                <View style={styles.attachBody}>
-                  <Text style={styles.attachTitle} numberOfLines={2}>
-                    {label}
-                  </Text>
-                  <Text style={styles.attachMeta} numberOfLines={1}>
-                    {meta.label}
-                    {a.filename ? ` · ${a.filename}` : ''}
-                  </Text>
-                </View>
-                <Icon name="ChevronLeft" size={18} color={t.inkMute} />
+      <View style={[styles.sectionHead, { flexDirection: rowRtl as 'row' }]}>
+        <Text style={styles.sectionTitle}>{title}</Text>
+        {hint ? <Text style={styles.sectionHint}>{hint}</Text> : null}
+      </View>
+      <View style={styles.list}>
+        {items.map((a, i) => {
+          const kind = attachKind(a);
+          const meta = kindMeta(kind);
+          const label = displayTitle(a.title, meta.label);
+          const yt = youtubeId(a.fileUrl);
+          const isPlaying = playingId === a.id;
+          const canInline =
+            Platform.OS === 'web' &&
+            (kind === 'video' || kind === 'youtube') &&
+            !!onPlay;
+
+          return (
+            <FadeIn key={a.id} delay={i * 40}>
+              <View style={styles.attachCard}>
+                <Pressable
+                  onPress={() =>
+                    canInline ? onPlay?.(a) : onOpen(a.fileUrl)
+                  }
+                  style={({ pressed }) => [
+                    styles.attachRow,
+                    { flexDirection: rowRtl as 'row' },
+                    pressed && { opacity: 0.94 },
+                  ]}
+                >
+                  <View
+                    style={[styles.attachIcon, { backgroundColor: meta.soft }]}
+                  >
+                    <Icon name={meta.icon} size={20} color={meta.color} />
+                  </View>
+                  <View style={styles.attachBody}>
+                    <Text style={styles.attachTitle} numberOfLines={2}>
+                      {label}
+                    </Text>
+                    <Text style={styles.attachMeta} numberOfLines={1}>
+                      {meta.label}
+                      {a.filename ? ` · ${a.filename}` : ''}
+                    </Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.ctaPill,
+                      { backgroundColor: meta.soft },
+                    ]}
+                  >
+                    <Text style={[styles.ctaText, { color: meta.color }]}>
+                      {canInline
+                        ? isPlaying
+                          ? 'إخفاء'
+                          : 'تشغيل'
+                        : 'فتح'}
+                    </Text>
+                  </View>
+                </Pressable>
+
+                {isPlaying && Platform.OS === 'web' ? (
+                  <View style={styles.player}>
+                    {yt ? (
+                      <iframe
+                        title={label}
+                        src={`https://www.youtube.com/embed/${yt}?autoplay=1`}
+                        style={styles.iframe as object}
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    ) : (
+                      // eslint-disable-next-line jsx-a11y/media-has-caption
+                      <video
+                        key={a.fileUrl}
+                        src={a.fileUrl}
+                        controls
+                        autoPlay
+                        style={styles.video as object}
+                      />
+                    )}
+                  </View>
+                ) : null}
               </View>
-            </SoftCard>
-          </FadeIn>
-        );
-      })}
+            </FadeIn>
+          );
+        })}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   hero: {
-    gap: 10,
+    backgroundColor: t.card,
+    borderRadius: t.radius.xl,
+    borderWidth: 1,
+    borderColor: t.line,
+    overflow: 'hidden',
     ...t.shadow.card,
   },
+  heroAccent: { height: 5 },
+  heroBody: {
+    padding: t.space.lg,
+    gap: 12,
+  },
   heroTop: {
-    flexDirection: rowRtl,
     alignItems: 'center',
     justifyContent: 'space-between',
   },
@@ -284,26 +409,27 @@ const styles = StyleSheet.create({
     flexDirection: rowRtl,
     alignItems: 'center',
     gap: 6,
-    backgroundColor: t.brandSoft,
     paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingVertical: 6,
     borderRadius: t.radius.full,
   },
   badgeText: {
     fontFamily: t.fonts.semiBold,
     fontSize: 12,
-    color: t.brand,
   },
   date: {
-    fontFamily: t.fonts.regular,
+    fontFamily: t.fonts.medium,
     fontSize: 12,
     color: t.inkMute,
+    fontVariant: ['tabular-nums'],
   },
   heroTitle: {
     fontFamily: t.fonts.bold,
-    fontSize: 20,
+    fontSize: 22,
     color: t.ink,
     textAlign: 'right',
+    letterSpacing: -0.3,
+    lineHeight: 30,
   },
   summary: {
     fontFamily: t.fonts.regular,
@@ -320,23 +446,26 @@ const styles = StyleSheet.create({
   stat: {
     flex: 1,
     alignItems: 'center',
-    backgroundColor: t.cardMuted,
     borderRadius: t.radius.lg,
-    paddingVertical: 10,
+    borderWidth: 1,
+    paddingVertical: 12,
     gap: 2,
   },
   statNum: {
     fontFamily: t.fonts.bold,
-    fontSize: 18,
-    color: t.ink,
+    fontSize: 20,
+    fontVariant: ['tabular-nums'],
   },
   statLabel: {
-    fontFamily: t.fonts.regular,
+    fontFamily: t.fonts.medium,
     fontSize: 11,
     color: t.inkMute,
   },
-  section: {
-    gap: 10,
+  section: { gap: 10 },
+  sectionHead: {
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    gap: 8,
   },
   sectionTitle: {
     fontFamily: t.fonts.bold,
@@ -344,28 +473,39 @@ const styles = StyleSheet.create({
     color: t.ink,
     textAlign: 'right',
   },
+  sectionHint: {
+    fontFamily: t.fonts.regular,
+    fontSize: 11,
+    color: t.inkMute,
+  },
+  list: { gap: 10 },
   attachCard: {
+    backgroundColor: t.card,
+    borderRadius: t.radius.xl,
+    borderWidth: 1,
+    borderColor: t.line,
     overflow: 'hidden',
+    ...t.shadow.card,
   },
   attachRow: {
-    flexDirection: rowRtl,
     alignItems: 'center',
     gap: 12,
-    padding: t.space.lg,
+    padding: t.space.md,
   },
   attachIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    width: 48,
+    height: 48,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
   attachBody: {
     flex: 1,
-    gap: 3,
+    gap: 4,
+    minWidth: 0,
   },
   attachTitle: {
-    fontFamily: t.fonts.semiBold,
+    fontFamily: t.fonts.bold,
     fontSize: 15,
     color: t.ink,
     textAlign: 'right',
@@ -373,24 +513,55 @@ const styles = StyleSheet.create({
   attachMeta: {
     fontFamily: t.fonts.regular,
     fontSize: 12,
-    color: t.inkSoft,
+    color: t.inkMute,
     textAlign: 'right',
   },
+  ctaPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: t.radius.full,
+  },
+  ctaText: {
+    fontFamily: t.fonts.semiBold,
+    fontSize: 12,
+  },
+  player: {
+    backgroundColor: '#0F172A',
+    aspectRatio: 16 / 9,
+    width: '100%',
+  },
+  iframe: {
+    width: '100%',
+    height: '100%',
+    border: 'none',
+  },
+  video: {
+    width: '100%',
+    height: '100%',
+    objectFit: 'contain',
+    backgroundColor: '#000',
+  },
   subjectBtn: {
-    flexDirection: rowRtl,
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
     backgroundColor: t.card,
     borderWidth: 1,
     borderColor: t.line,
     borderRadius: t.radius.xl,
-    padding: t.space.lg,
+    padding: t.space.md,
+    ...t.shadow.card,
   },
+  subjectText: { flex: 1, gap: 2 },
   subjectBtnText: {
-    flex: 1,
-    fontFamily: t.fonts.semiBold,
+    fontFamily: t.fonts.bold,
     fontSize: 15,
     color: t.ink,
+    textAlign: 'right',
+  },
+  subjectSub: {
+    fontFamily: t.fonts.regular,
+    fontSize: 12,
+    color: t.inkMute,
     textAlign: 'right',
   },
 });

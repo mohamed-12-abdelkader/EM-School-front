@@ -13,9 +13,10 @@ import {
 import { ChipSelect, FormLabel, SegmentControl } from '@/components/admin';
 import {
   LoadingBlock,
-  StudentScreen,
+  StudentPageShell,
   rowRtl,
 } from '@/components/student/ui';
+import { studentTheme as t } from '@/components/student/theme';
 import {
   deleteStudySession,
   getStudyPlan,
@@ -128,12 +129,12 @@ export default function PlannerScreen() {
   };
 
   return (
-    <StudentScreen
+    <StudentPageShell
       title="جدول المذاكرة"
       subtitle={`الالتزام ${adherence}%`}
-      onBack
+      icon="CalendarDays"
       right={
-        <Pressable onPress={openCreate} hitSlop={8}>
+        <Pressable onPress={openCreate} style={styles.addBtn} hitSlop={8}>
           <Text style={styles.add}>إضافة</Text>
         </Pressable>
       }
@@ -260,11 +261,19 @@ export default function PlannerScreen() {
           />
         </View>
       </AppModal>
-    </StudentScreen>
+    </StudentPageShell>
   );
 }
 
 const styles = StyleSheet.create({
+  addBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: t.radius.full,
+    backgroundColor: t.brandSoft,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
   add: {
     fontFamily: fonts.semiBold,
     fontSize: 13,

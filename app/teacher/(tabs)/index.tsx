@@ -56,6 +56,15 @@ const ACTIONS = [
     tint: '#EDE9FE',
     color: '#7C3AED',
   },
+  {
+    key: 'messages',
+    title: 'رسائل الطلاب',
+    sub: 'رد على تواصل الطلاب',
+    icon: 'MessagesSquare',
+    href: '/teacher/messages',
+    tint: '#E0F2FE',
+    color: '#0284C7',
+  },
 ] as const;
 
 export default function TeacherHomeTab() {
