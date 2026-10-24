@@ -29,7 +29,7 @@ const SHORTCUTS = [
   { label: 'امتحانات', icon: 'ClipboardList', href: '/(student)/exams', color: t.sky, bg: t.skySoft },
   { label: 'دروس', icon: 'Play', href: '/(student)/lectures', color: t.brand, bg: t.brandSoft },
   { label: 'نتائج', icon: 'Trophy', href: '/(student)/results', color: t.success, bg: t.successSoft },
-  { label: 'الجدول', icon: 'CalendarClock', href: '/(student)/timetable', color: '#6366F1', bg: '#EEF2FF' },
+  { label: 'الجدول', icon: 'CalendarClock', href: '/(student)/timetable', color: t.brand, bg: t.brandSoft },
   { label: 'إشعارات', icon: 'Bell', href: '/(student)/notifications', color: t.danger, bg: '#FFF1F2' },
 ] as const;
 

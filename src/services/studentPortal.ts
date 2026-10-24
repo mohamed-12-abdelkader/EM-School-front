@@ -188,7 +188,7 @@ function asSubject(raw: Record<string, unknown>): StudentSubject & { teacherName
     id: String(raw.id),
     name: String(raw.name),
     icon: String(raw.icon || 'BookOpen'),
-    color: String(raw.color || '#4F46E5'),
+    color: String(raw.color || '#3B82F6'),
     teacherId: String(raw.teacherId || ''),
     teacherName: raw.teacherName ? String(raw.teacherName) : '',
     progress: Number(raw.progress || 0),

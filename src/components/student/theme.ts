@@ -1,8 +1,8 @@
-import { fonts, radii, shadows, spacing } from '@/theme/tokens';
+import { brandGradient, colors, fonts, radii, shadows, spacing } from '@/theme/tokens';
 
 /**
  * Student portal — light Clast operate surface (EdTech, easy scan, Arabic RTL).
- * Canvas soft slate; brand indigo; clear status colors.
+ * Canvas soft slate; brand matches admin primary blue.
  */
 export const studentTheme = {
   canvas: '#F8FAFC',
@@ -12,9 +12,9 @@ export const studentTheme = {
   inkSoft: '#475569',
   inkMute: '#94A3B8',
   line: '#E2E8F0',
-  brand: '#4F46E5',
-  brandDeep: '#4338CA',
-  brandSoft: '#EEF2FF',
+  brand: colors.primary,
+  brandDeep: colors.primaryDark,
+  brandSoft: colors.primarySoft,
   accent: '#F97316',
   accentSoft: '#FFF7ED',
   success: '#059669',
@@ -28,9 +28,9 @@ export const studentTheme = {
   ai: '#7C3AED',
   aiSoft: '#F5F3FF',
   /** Inner-screen headers (white text on brand) */
-  heroGradient: ['#312E81', '#4F46E5', '#6366F1'] as const,
+  heroGradient: brandGradient,
   /** Home next-action panel */
-  heroAccent: ['#4F46E5', '#6366F1'] as const,
+  heroAccent: [colors.primaryDark, colors.primary] as const,
   radius: {
     sm: radii.sm,
     md: radii.md,
@@ -50,7 +50,7 @@ export const studentTheme = {
     },
     float: {
       ...shadows.md,
-      shadowColor: '#4F46E5',
+      shadowColor: colors.primary,
       shadowOpacity: 0.16,
       shadowRadius: 22,
       elevation: 6,

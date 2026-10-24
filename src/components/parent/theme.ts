@@ -1,10 +1,11 @@
+import { colors } from '@/theme/tokens';
 import { studentTheme } from '@/components/student/theme';
 
-/** Parent portal shares Clast operate surface with student (light EdTech). */
+/** Parent portal shares Clast operate surface with student (admin brand blue). */
 export const parentTheme = {
   ...studentTheme,
-  /** Warm teal accent for guardian context (distinct from student indigo-only) */
-  guardian: '#0D9488',
-  guardianSoft: '#F0FDFA',
-  guardianDeep: '#0F766E',
+  /** Guardian accent aligned with admin primary */
+  guardian: colors.primary,
+  guardianSoft: colors.primarySoft,
+  guardianDeep: colors.primaryDeep,
 } as const;

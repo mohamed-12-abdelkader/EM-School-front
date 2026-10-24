@@ -291,7 +291,7 @@ export default function ExamTakeScreen() {
                   ? ['#9F1239', '#E11D48', '#FB7185']
                   : urgent
                     ? ['#92400E', '#D97706', '#F59E0B']
-                    : ['#1E1B4B', '#3730A3', '#4F46E5']
+                    : [...t.heroGradient]
               }
               start={{ x: 0.05, y: 0 }}
               end={{ x: 1, y: 1 }}
@@ -339,7 +339,7 @@ export default function ExamTakeScreen() {
                   <Icon
                     name="Clock"
                     size={15}
-                    color={critical ? '#fff' : urgent ? '#92400E' : '#EEF2FF'}
+                    color={critical ? '#fff' : urgent ? '#92400E' : t.brandSoft}
                   />
                   <Text
                     style={[
@@ -551,7 +551,7 @@ export default function ExamTakeScreen() {
               ]}
             >
               <LinearGradient
-                colors={['#4F46E5', '#6366F1']}
+                colors={[...t.heroAccent]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.submitGrad}

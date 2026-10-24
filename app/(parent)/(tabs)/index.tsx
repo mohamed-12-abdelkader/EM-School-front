@@ -114,7 +114,7 @@ export default function ParentHomeTab() {
           }
         >
           <LinearGradient
-            colors={['#0F766E', '#0D9488', '#14B8A6']}
+            colors={[...t.heroGradient]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.hero}

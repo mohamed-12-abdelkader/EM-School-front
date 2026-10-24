@@ -1,22 +1,22 @@
-import { fonts, radii, shadows, spacing } from '@/theme/tokens';
+import { brandGradient, colors, fonts, radii, shadows, spacing } from '@/theme/tokens';
 
 /**
- * Teacher portal — calm light workspace (teal + slate)
+ * Teacher portal — calm light workspace aligned with admin brand blue.
  * Easy scan, RTL-first, avoids dark-purple dashboard cliché.
  */
 export const teacherTheme = {
   canvas: '#F3F6FA',
-  canvasTint: '#E8F5F3',
+  canvasTint: colors.primarySoft,
   card: '#FFFFFF',
   cardMuted: '#F8FAFC',
   ink: '#0F172A',
   inkSoft: '#475569',
   inkMute: '#94A3B8',
   line: '#E2E8F0',
-  brand: '#0F766E',
-  brandHover: '#0D9488',
-  brandSoft: '#CCFBF1',
-  brandDeep: '#115E59',
+  brand: colors.primary,
+  brandHover: colors.primaryDark,
+  brandSoft: colors.primarySoft,
+  brandDeep: colors.primaryDeep,
   accent: '#0369A1',
   accentSoft: '#E0F2FE',
   success: '#059669',
@@ -27,7 +27,7 @@ export const teacherTheme = {
   dangerSoft: '#FEE2E2',
   info: '#0284C7',
   infoSoft: '#E0F2FE',
-  heroGradient: ['#115E59', '#0F766E', '#14B8A6'] as const,
+  heroGradient: brandGradient,
   radius: {
     sm: radii.sm,
     md: radii.md,

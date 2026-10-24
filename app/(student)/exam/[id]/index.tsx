@@ -115,7 +115,7 @@ export default function ExamIntroScreen() {
     ? { bg: 'rgba(16,185,129,0.22)', fg: '#A7F3D0' }
     : exam.inProgress
       ? { bg: 'rgba(245,158,11,0.25)', fg: '#FDE68A' }
-      : { bg: 'rgba(255,255,255,0.18)', fg: '#EEF2FF' };
+      : { bg: 'rgba(255,255,255,0.18)', fg: t.brandSoft };
 
   const gradeValue =
     exam.attempted && exam.score != null
@@ -188,7 +188,7 @@ export default function ExamIntroScreen() {
         transition={{ type: 'timing', duration: 420 }}
       >
         <LinearGradient
-          colors={['#1E1B4B', '#3730A3', '#4F46E5']}
+          colors={[...t.heroGradient]}
           start={{ x: 0.05, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.hero}
@@ -327,7 +327,7 @@ export default function ExamIntroScreen() {
               ]}
             >
               <LinearGradient
-                colors={['#4F46E5', '#6366F1']}
+                colors={[...t.heroAccent]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.primaryGrad}

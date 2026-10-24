@@ -769,7 +769,7 @@ const styles = StyleSheet.create({
   },
   modeCardOn: {
     borderColor: t.brand,
-    backgroundColor: '#F0FDFA',
+    backgroundColor: t.brandSoft,
   },
   modeIcon: {
     width: 36,
